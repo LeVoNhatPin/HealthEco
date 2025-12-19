@@ -1,27 +1,22 @@
-# Stage 1: Build
+# Dockerfile mới - ĐƠN GIẢN, KHÔNG CACHE
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy the entire solution structure
+# Copy TOÀN BỘ project thay vì từng file
 COPY . .
 
-# Restore dependencies
-RUN dotnet restore "HealthEco.API/HealthEco.API.csproj"
+# Restore dependencies (sẽ restore tất cả projects)
+RUN dotnet restore
 
-# Build
-WORKDIR "/src/HealthEco.API"
-RUN dotnet build "HealthEco.API.csproj" -c Release -o /app/build
+# Publish chỉ API project
+RUN dotnet publish "HealthEco.API/HealthEco.API.csproj" -c Release -o /app/publish
 
-# Stage 2: Publish
-FROM build AS publish
-RUN dotnet publish "HealthEco.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
-
-# Stage 3: Runtime
+# Runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 
 ENTRYPOINT ["dotnet", "HealthEco.API.dll"]
