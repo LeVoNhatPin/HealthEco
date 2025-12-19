@@ -1,19 +1,11 @@
-# =========================
-# BUILD STAGE
-# =========================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy toàn bộ backend
 COPY . .
 
-# Restore & publish API (KHÔNG dùng sln)
 RUN dotnet restore HealthEco.API/HealthEco.API.csproj
 RUN dotnet publish HealthEco.API/HealthEco.API.csproj -c Release -o /app/publish
 
-# =========================
-# RUNTIME STAGE
-# =========================
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
