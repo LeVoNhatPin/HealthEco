@@ -2,10 +2,16 @@
 using HealthEco.API.Extensions;
 using HealthEco.Application;
 using HealthEco.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog
+// 🚀 BẮT BUỘC CHO RENDER (EXPOSE PORT 8080)
+builder.WebHost.UseUrls("http://0.0.0.0:8080");
+
+// =======================
+// CONFIGURE SERILOG
+// =======================
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
@@ -15,16 +21,20 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// Add services
+// =======================
+// ADD SERVICES
+// =======================
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGenWithJwt();
 
-// Add layers
+// Application layers
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// Add CORS
+// =======================
+// CORS (CHO FRONTEND VERCEL)
+// =======================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -35,13 +45,17 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add Health Checks
+// =======================
+// HEALTH CHECKS
+// =======================
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-// Configure pipeline
-if (app.Environment.IsDevelopment())
+// =======================
+// PIPELINE
+// =======================
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
@@ -51,16 +65,16 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// MIDDLEWARE PIPELINE - PHẢI ĐẶT TRƯỚC KHI MAP ENDPOINTS
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+
 app.UseAuthorization();
-
-// MAP ENDPOINTS
 app.MapControllers();
-app.MapHealthChecks("/health");
-app.MapGet("/", () => "HealthEco API is running!");
 
-// CUỐI CÙNG: ĐỌC PORT VÀ CHẠY APP
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-app.Run($"http://0.0.0.0:{port}");
+// =======================
+// ENDPOINTS
+// =======================
+app.MapHealthChecks("/health");
+app.MapGet("/", () => "HealthEco API is running! 🚀");
+
+app.Run();

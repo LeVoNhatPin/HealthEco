@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: health-eco-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: health_eco_db
+      POSTGRES_USER: health_eco_user
+      POSTGRES_PASSWORD: health_eco_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    image: health-eco-api
+    container_name: health-eco-api
+    depends_on:
+      - postgres
+    ports:
+      - "8081:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=health_eco_db;Username=health_eco_user;Password=health_eco_pass
+
+volumes:
+  postgres_data:

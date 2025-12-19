@@ -1,41 +1,33 @@
-name: HealthEco_BackEnd CI/CD
+name: Backend CI/CD - Railway
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - develop
+      - main
     paths:
-      - 'HealthEco_BackEnd/**'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'HealthEco_BackEnd/**'
+      - "HealthEco_BackEnd/**"
+      - ".github/workflows/backend-ci.yml"
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
-        
-    - name: Restore dependencies
-      run: dotnet restore HealthEco_BackEnd/HealthEco.sln
-      
-    - name: Build
-      run: dotnet build HealthEco_BackEnd/HealthEco.sln --configuration Release --no-restore
-      
-    - name: Test
-      run: dotnet test HealthEco_BackEnd/HealthEco.sln --no-build --verbosity normal
-      
-    - name: Publish
-      run: dotnet publish HealthEco_BackEnd/HealthEco.API/HealthEco.API.csproj -c Release -o ./publish
-      
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: HealthEco_BackEnd-publish
-        path: ./publish
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          echo "$HOME/.railway/bin" >> $GITHUB_PATH
+
+      - name: Railway Login
+        run: railway login --token ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy Backend to Railway
+        run: |
+          railway up --service health-eco-backend
