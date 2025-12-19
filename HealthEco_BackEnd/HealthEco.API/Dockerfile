@@ -3,8 +3,8 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore HealthEco.API/HealthEco.API.csproj
-RUN dotnet publish HealthEco.API/HealthEco.API.csproj -c Release -o /app/publish
+RUN dotnet restore
+RUN dotnet publish -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
