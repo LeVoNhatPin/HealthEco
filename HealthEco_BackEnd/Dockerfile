@@ -2,16 +2,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy csproj files and restore
-COPY HealthEco.API/HealthEco.API.csproj HealthEco.API/
-COPY HealthEco.Application/HealthEco.Application.csproj HealthEco.Application/
-COPY HealthEco.Infrastructure/HealthEco.Infrastructure.csproj HealthEco.Infrastructure/
-COPY HealthEco.Core/HealthEco.Core.csproj HealthEco.Core/
+# Copy the entire solution structure
+COPY . .
 
+# Restore dependencies
 RUN dotnet restore "HealthEco.API/HealthEco.API.csproj"
 
-# Copy everything and build
-COPY . .
+# Build
 WORKDIR "/src/HealthEco.API"
 RUN dotnet build "HealthEco.API.csproj" -c Release -o /app/build
 
