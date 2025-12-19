@@ -1,8 +1,7 @@
-using Serilog;
+﻿using Serilog;
 using HealthEco.API.Extensions;
 using HealthEco.Application;
 using HealthEco.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,16 +51,16 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// MIDDLEWARE PIPELINE - PHẢI ĐẶT TRƯỚC KHI MAP ENDPOINTS
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
-
 app.UseAuthorization();
+
+// MAP ENDPOINTS
 app.MapControllers();
-
-// Health check endpoint
 app.MapHealthChecks("/health");
-
-// Root endpoint
 app.MapGet("/", () => "HealthEco API is running!");
 
-app.Run();
+// CUỐI CÙNG: ĐỌC PORT VÀ CHẠY APP
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Run($"http://0.0.0.0:{port}");
