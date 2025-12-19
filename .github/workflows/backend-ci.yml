@@ -1,0 +1,41 @@
+name: HealthEco_BackEnd CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'HealthEco_BackEnd/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'HealthEco_BackEnd/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore HealthEco_BackEnd/HealthEco.sln
+      
+    - name: Build
+      run: dotnet build HealthEco_BackEnd/HealthEco.sln --configuration Release --no-restore
+      
+    - name: Test
+      run: dotnet test HealthEco_BackEnd/HealthEco.sln --no-build --verbosity normal
+      
+    - name: Publish
+      run: dotnet publish HealthEco_BackEnd/HealthEco.API/HealthEco.API.csproj -c Release -o ./publish
+      
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: HealthEco_BackEnd-publish
+        path: ./publish

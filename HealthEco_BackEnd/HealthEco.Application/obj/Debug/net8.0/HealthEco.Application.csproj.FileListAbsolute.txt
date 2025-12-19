@@ -1,0 +1,15 @@
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\bin\Debug\net8.0\HealthEco.Application.deps.json
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\bin\Debug\net8.0\HealthEco.Application.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\bin\Debug\net8.0\HealthEco.Application.pdb
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\bin\Debug\net8.0\HealthEco.Core.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\bin\Debug\net8.0\HealthEco.Core.pdb
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.Application.csproj.AssemblyReference.cache
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.Application.GeneratedMSBuildEditorConfig.editorconfig
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.Application.AssemblyInfoInputs.cache
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.Application.AssemblyInfo.cs
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.Application.csproj.CoreCompileInputs.cache
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEc.16C8D97C.Up2Date
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.Application.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\refint\HealthEco.Application.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.Application.pdb
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\ref\HealthEco.Application.dll

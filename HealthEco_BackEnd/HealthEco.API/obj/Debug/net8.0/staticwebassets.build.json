@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "A7hAv77N+SgW4hoo0N3MJot7izYUGzovKsKSSV8Ph3o=",
+  "Source": "HealthEco.API",
+  "BasePath": "_content/HealthEco.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

@@ -1,0 +1,11 @@
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\bin\Debug\net8.0\HealthEco.Core.deps.json
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\bin\Debug\net8.0\HealthEco.Core.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\bin\Debug\net8.0\HealthEco.Core.pdb
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.GeneratedMSBuildEditorConfig.editorconfig
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.AssemblyInfoInputs.cache
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.AssemblyInfo.cs
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.csproj.CoreCompileInputs.cache
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\refint\HealthEco.Core.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.pdb
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\ref\HealthEco.Core.dll

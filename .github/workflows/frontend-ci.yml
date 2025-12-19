@@ -1,0 +1,45 @@
+name: HealthEco_FrontEnd CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'HealthEco_FrontEnd/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'HealthEco_FrontEnd/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: HealthEco_FrontEnd/package-lock.json
+        
+    - name: Install dependencies
+      run: npm ci
+      working-directory: ./HealthEco_FrontEnd
+      
+    - name: TypeScript check
+      run: npx tsc --noEmit
+      working-directory: ./HealthEco_FrontEnd
+      
+    - name: Build
+      run: npm run build
+      working-directory: ./HealthEco_FrontEnd
+      env:
+        NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: HealthEco_FrontEnd-build
+        path: HealthEco_FrontEnd/.next

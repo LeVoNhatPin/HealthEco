@@ -1,0 +1,33 @@
+# HealthEco_BackEnd
+HealthEco_BackEnd/bin/
+HealthEco_BackEnd/obj/
+HealthEco_BackEnd/*.user
+HealthEco_BackEnd/.vs/
+HealthEco_BackEnd/.vscode/
+HealthEco_BackEnd/HealthEco.API/appsettings.Development.json
+HealthEco_BackEnd/HealthEco.API/appsettings.Local.json
+HealthEco_BackEnd/publish/
+HealthEco_BackEnd/logs/
+HealthEco_BackEnd/HealthEco.API/logs/
+HealthEco_BackEnd/Migrations/
+
+# HealthEco_FrontEnd
+HealthEco_FrontEnd/.next/
+HealthEco_FrontEnd/out/
+HealthEco_FrontEnd/node_modules/
+HealthEco_FrontEnd/.env.local
+HealthEco_FrontEnd/.env.development.local
+HealthEco_FrontEnd/.env.test.local
+HealthEco_FrontEnd/.env.production.local
+HealthEco_FrontEnd/.vercel
+
+# General
+.DS_Store
+*.log
+.env
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
