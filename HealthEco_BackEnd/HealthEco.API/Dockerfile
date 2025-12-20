@@ -4,12 +4,17 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy source
+# Copy toàn bộ backend
 COPY . .
 
-# Restore & publish API
-RUN dotnet restore HealthEco.API.csproj
-RUN dotnet publish HealthEco.API.csproj -c Release -o /app/publish
+# Restore solution (vì context giờ là HealthEco_BackEnd)
+RUN dotnet restore HealthEco_BackEnd.sln
+
+# Publish API
+RUN dotnet publish HealthEco.API/HealthEco.API.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
 
 # =========================
 # RUNTIME STAGE
