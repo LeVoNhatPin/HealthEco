@@ -4,10 +4,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy toàn bộ backend
+# Copy toàn bộ backend (vì context = HealthEco_BackEnd)
 COPY . .
 
-# Restore solution (vì context giờ là HealthEco_BackEnd)
+# Restore solution
 RUN dotnet restore HealthEco_BackEnd.sln
 
 # Publish API
