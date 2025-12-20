@@ -6,9 +6,9 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore HealthEco_BackEnd.sln
+RUN dotnet restore HealthEco_BackEnd/HealthEco_BackEnd.sln
 
-RUN dotnet publish HealthEco.API/HealthEco.API.csproj \
+RUN dotnet publish HealthEco_BackEnd/HealthEco.API/HealthEco.API.csproj \
     -c Release \
     -o /app/publish \
     --no-restore
