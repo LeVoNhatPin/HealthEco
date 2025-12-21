@@ -34,7 +34,6 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1"
     });
 
-    // JWT support
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Authorization: Bearer {token}",
@@ -61,21 +60,27 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 
-// CORS
+/// =======================================================
+/// ✅ CORS (FIXED)
+/// =======================================================
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
         policy
-            .AllowAnyOrigin()
+            .WithOrigins(
+                "https://health-eco.vercel.app",
+                "http://localhost:3000"
+            )
+            .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowAnyHeader();
+            .AllowCredentials();
     });
 });
 
 
 /// =======================================================
-/// DATABASE (RAILWAY DATABASE_URL + LOCAL FALLBACK)
+/// DATABASE
 /// =======================================================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -84,19 +89,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
     if (!string.IsNullOrWhiteSpace(databaseUrl))
     {
-        // Parse postgresql://user:pass@host:port/db
         var uri = new Uri(databaseUrl);
         var userInfo = uri.UserInfo.Split(':', 2);
-
-        var username = userInfo[0];
-        var password = userInfo[1];
 
         connectionString =
             $"Host={uri.Host};" +
             $"Port={uri.Port};" +
             $"Database={uri.AbsolutePath.Trim('/')};" +
-            $"Username={username};" +
-            $"Password={password};" +
+            $"Username={userInfo[0]};" +
+            $"Password={userInfo[1]};" +
             $"SSL Mode=Require;" +
             $"Trust Server Certificate=true;";
     }
@@ -121,7 +122,6 @@ var jwtSettings = builder.Configuration
     .Get<JwtSettings>()
     ?? throw new Exception("❌ JwtSettings is missing");
 
-// Authentication
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -142,7 +142,6 @@ builder.Services
         };
     });
 
-// Authorization
 builder.Services.AddAuthorization();
 
 
@@ -153,17 +152,13 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 
-/// =======================================================
-/// BUILD APP
-/// =======================================================
 var app = builder.Build();
 
 
 /// =======================================================
-/// MIDDLEWARE
+/// MIDDLEWARE (⚠️ ORDER QUAN TRỌNG)
 /// =======================================================
 
-// Swagger (enable cả production)
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -171,19 +166,19 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseRouting();
+
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-
-/// =======================================================
-/// ROUTES
-/// =======================================================
 app.MapControllers();
 
-// Health check
+
+/// =======================================================
+/// HEALTH CHECK
+/// =======================================================
 app.MapGet("/health", () =>
     Results.Ok(new
     {
@@ -194,7 +189,7 @@ app.MapGet("/health", () =>
 
 
 /// =======================================================
-/// AUTO MIGRATION (PRODUCTION)
+/// AUTO MIGRATION
 /// =======================================================
 if (!app.Environment.IsDevelopment())
 {
@@ -203,8 +198,4 @@ if (!app.Environment.IsDevelopment())
     db.Database.Migrate();
 }
 
-
-/// =======================================================
-/// RUN
-/// =======================================================
 app.Run();
