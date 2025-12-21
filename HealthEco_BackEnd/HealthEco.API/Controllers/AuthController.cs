@@ -26,9 +26,18 @@ namespace HealthEco.API.Controllers
         {
             try
             {
+                Console.WriteLine($"Registration attempt for email: {request.Email}");
+
                 // Validate request
                 if (await _userRepository.UserExistsAsync(request.Email))
-                    return BadRequest(new { message = "Email already exists" });
+                {
+                    Console.WriteLine($"Email already exists: {request.Email}");
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Email already exists"
+                    });
+                }
 
                 // Create user
                 var user = new User
@@ -46,11 +55,15 @@ namespace HealthEco.API.Controllers
                     IsActive = true
                 };
 
+                Console.WriteLine($"Creating user with email: {user.Email}");
                 await _userRepository.AddAsync(user);
+                Console.WriteLine($"User created with ID: {user.Id}");
 
                 // Generate tokens
                 var accessToken = _tokenService.GenerateAccessToken(user);
                 var refreshToken = _tokenService.GenerateRefreshToken();
+
+                Console.WriteLine($"Tokens generated for user ID: {user.Id}");
 
                 return Ok(new ApiResponse<AuthResponse>
                 {
@@ -77,11 +90,14 @@ namespace HealthEco.API.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Registration error: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
                     Message = "Registration failed",
-                    Error = ex.Message
+                    Error = ex.InnerException?.Message ?? ex.Message
                 });
             }
         }
