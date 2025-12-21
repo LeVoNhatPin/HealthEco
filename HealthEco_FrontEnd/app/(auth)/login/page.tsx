@@ -46,8 +46,9 @@ export default function LoginPage() {
     try {
       await login(email, password);
       // Success message is shown in AuthContext
-    } catch (error: any) {
+    } catch (error) {
       // Error message is already shown in AuthContext
+      console.error(error);
     } finally {
       setIsLoading(false);
     }

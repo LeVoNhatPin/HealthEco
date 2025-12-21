@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiClient, User, LoginRequest, RegisterRequest } from '@/lib/api/client';
+import { apiClient, User, RegisterRequest } from '@/lib/api/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
@@ -27,6 +27,15 @@ export const useAuth = () => {
 
 interface AuthProviderProps {
   children: ReactNode;
+}
+
+interface ApiError {
+  message: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
@@ -79,11 +88,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         toast.success('Login successful!');
         
         // Redirect based on role
-        if (response.data.user.role === 'Patient') {
+        const role = response.data.user.role;
+        if (role === 'Patient') {
           router.push('/dashboard/patient');
-        } else if (response.data.user.role === 'Doctor') {
+        } else if (role === 'Doctor') {
           router.push('/dashboard/doctor');
-        } else if (response.data.user.role === 'ClinicAdmin') {
+        } else if (role === 'ClinicAdmin') {
           router.push('/dashboard/clinic');
         } else {
           router.push('/dashboard');
@@ -91,8 +101,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } else {
         throw new Error(response.message || 'Login failed');
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Login failed. Please try again.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Login failed. Please try again.';
+      toast.error(errorMessage);
       throw error;
     } finally {
       setIsLoading(false);
@@ -119,8 +132,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } else {
         throw new Error(response.message || 'Registration failed');
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Registration failed. Please try again.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Registration failed. Please try again.';
+      toast.error(errorMessage);
       throw error;
     } finally {
       setIsLoading(false);

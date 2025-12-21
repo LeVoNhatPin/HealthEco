@@ -1,9 +1,9 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestConfig } from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 // Types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
   data?: T;
@@ -188,23 +188,23 @@ class ApiClient {
     }
   }
 
-  // Public API methods
-  public async get<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+  // Public API methods with proper types
+  public async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     const response = await this.client.get<ApiResponse<T>>(url, config);
     return response.data;
   }
 
-  public async post<T>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
+  public async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     const response = await this.client.post<ApiResponse<T>>(url, data, config);
     return response.data;
   }
 
-  public async put<T>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
+  public async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     const response = await this.client.put<ApiResponse<T>>(url, data, config);
     return response.data;
   }
 
-  public async delete<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+  public async delete<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     const response = await this.client.delete<ApiResponse<T>>(url, config);
     return response.data;
   }
@@ -223,7 +223,7 @@ class ApiClient {
   }
 
   public async logout(): Promise<ApiResponse> {
-    return this.post('/api/auth/logout');
+    return this.post<unknown>('/api/auth/logout');
   }
 
   public async getCurrentUser(): Promise<ApiResponse<User>> {
@@ -242,7 +242,7 @@ class ApiClient {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       return {
-        id: parseInt(payload.nameid),
+        id: parseInt(payload.nameid, 10),
         email: payload.email,
         fullName: payload.unique_name,
         role: payload.role,
