@@ -1,33 +1,32 @@
-import { Button } from '@/components/ui/Button'
-import Link from 'next/link'
-import { ArrowRight, Calendar, Stethoscope, Shield } from 'lucide-react'
+import Link from 'next/link';
+import { Stethoscope, Calendar, Shield, Users, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-white py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-              Chăm sóc sức khỏe của bạn,
-              <span className="text-blue-600"> đơn giản hơn bao giờ hết</span>
+      <section className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Healthcare Made Simple
             </h1>
-            <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
-              Kết nối với hàng ngàn bác sĩ và phòng khám uy tín. Đặt lịch khám trực tuyến nhanh chóng, theo dõi sức khỏe mọi lúc mọi nơi.
+            <p className="text-xl md:text-2xl mb-8 text-blue-100">
+              Book appointments with top doctors, manage your health records, and get care when you need it.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/register">
-                <Button className="text-lg px-8">
-                  Đăng ký ngay
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+              <Link
+                href="/register/patient"
+                className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-3 rounded-lg text-lg font-semibold transition-colors flex items-center justify-center"
+              >
+                Get Started
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
-              <Link href="/doctors">
-                <Button variant="outline" className="text-lg px-8">
-                  <Stethoscope className="mr-2 h-5 w-5" />
-                  Tìm bác sĩ
-                </Button>
+              <Link
+                href="/login"
+                className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-8 py-3 rounded-lg text-lg font-semibold transition-colors"
+              >
+                Sign In
               </Link>
             </div>
           </div>
@@ -36,44 +35,54 @@ export default function HomePage() {
 
       {/* Features Section */}
       <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Tại sao chọn HealthEco?
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Why Choose HealthEco?
             </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              Chúng tôi cung cấp giải pháp toàn diện cho nhu cầu chăm sóc sức khỏe của bạn
+            <p className="text-xl text-gray-600">
+              Modern healthcare solutions for everyone
             </p>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-blue-50 p-8 rounded-xl">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
-                <Calendar className="h-8 w-8 text-blue-600" />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="bg-blue-50 rounded-xl p-6">
+              <div className="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                <Calendar className="h-6 w-6 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Đặt lịch dễ dàng</h3>
+              <h3 className="text-xl font-semibold mb-2">Easy Booking</h3>
               <p className="text-gray-600">
-                Chọn bác sĩ, đặt lịch hẹn trong vài phút. Hủy hoặc đổi lịch linh hoạt.
+                Book appointments with doctors in just a few clicks, 24/7.
               </p>
             </div>
-
-            <div className="bg-green-50 p-8 rounded-xl">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
-                <Stethoscope className="h-8 w-8 text-green-600" />
+            
+            <div className="bg-green-50 rounded-xl p-6">
+              <div className="bg-green-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                <Stethoscope className="h-6 w-6 text-green-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Bác sĩ uy tín</h3>
+              <h3 className="text-xl font-semibold mb-2">Top Doctors</h3>
               <p className="text-gray-600">
-                Đội ngũ bác sĩ chuyên môn cao, có giấy phép hành nghề và nhiều năm kinh nghiệm.
+                Access to verified and experienced healthcare professionals.
               </p>
             </div>
-
-            <div className="bg-purple-50 p-8 rounded-xl">
-              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mb-6">
-                <Shield className="h-8 w-8 text-purple-600" />
+            
+            <div className="bg-purple-50 rounded-xl p-6">
+              <div className="bg-purple-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                <Shield className="h-6 w-6 text-purple-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Bảo mật thông tin</h3>
+              <h3 className="text-xl font-semibold mb-2">Secure & Private</h3>
               <p className="text-gray-600">
-                Dữ liệu sức khỏe được mã hóa và bảo vệ nghiêm ngặt theo tiêu chuẩn quốc tế.
+                Your health data is protected with enterprise-grade security.
+              </p>
+            </div>
+            
+            <div className="bg-orange-50 rounded-xl p-6">
+              <div className="bg-orange-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                <Users className="h-6 w-6 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">For Everyone</h3>
+              <p className="text-gray-600">
+                Patients, doctors, and clinics all in one integrated platform.
               </p>
             </div>
           </div>
@@ -81,48 +90,30 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-white mb-6">
-            Sẵn sàng bắt đầu hành trình chăm sóc sức khỏe?
+      <section className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-20">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold mb-6">
+            Ready to transform your healthcare experience?
           </h2>
-          <p className="text-blue-100 text-lg mb-8 max-w-2xl mx-auto">
-            Tham gia cùng hàng ngàn người đang sử dụng HealthEco để quản lý sức khỏe tốt hơn.
+          <p className="text-xl mb-8 text-blue-100">
+            Join thousands of satisfied patients and healthcare providers.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register">
-              <Button className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8">
-                Đăng ký miễn phí
-              </Button>
+            <Link
+              href="/register/patient"
+              className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-3 rounded-lg text-lg font-semibold transition-colors"
+            >
+              Sign Up as Patient
             </Link>
-            <Link href="/login">
-              <Button variant="outline" className="border-white text-white hover:bg-blue-700 text-lg px-8">
-                Đăng nhập
-              </Button>
+            <Link
+              href="/register/doctor"
+              className="bg-transparent border-2 border-white hover:bg-white/10 px-8 py-3 rounded-lg text-lg font-semibold transition-colors"
+            >
+              Join as Doctor
             </Link>
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-6 md:mb-0">
-              <div className="flex items-center space-x-2 mb-4">
-                <Stethoscope className="h-8 w-8 text-blue-400" />
-                <span className="text-2xl font-bold">HealthEco</span>
-              </div>
-              <p className="text-gray-400">
-                Chăm sóc sức khỏe thông minh cho mọi người
-              </p>
-            </div>
-            <div className="text-gray-400">
-              <p>© {new Date().getFullYear()} HealthEco. All rights reserved.</p>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
-  )
+  );
 }
