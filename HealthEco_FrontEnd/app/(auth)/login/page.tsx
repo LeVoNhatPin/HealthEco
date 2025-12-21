@@ -1,20 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { Mail, Lock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
   const { login } = useAuth();
-  const router = useRouter();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -46,31 +45,23 @@ export default function LoginPage() {
     
     try {
       await login(email, password);
-      toast.success('Login successful!');
-      
-      // Redirect based on user role
-      router.push('/dashboard');
-    } catch (error: unknown) {
-      let message = 'Đăng nhập thất bại. Vui lòng thử lại.';
-      if (error instanceof Error) {
-        message = error.message;
-      } else if (typeof error === 'object' && error !== null && 'response' in error) {
-        // Xử lý lỗi từ axios response
-        const axiosError = error as { response?: { data?: { message?: string } } };
-        message = axiosError.response?.data?.message || message;
-      }
-      toast.error(message);
+      // Success message is shown in AuthContext
+    } catch (error: any) {
+      // Error message is already shown in AuthContext
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Welcome back to HealthEco
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-blue-600 mb-2">HealthEco</h1>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Welcome back
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600">
             Sign in to your account to continue
           </p>
         </div>
@@ -97,6 +88,7 @@ export default function LoginPage() {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               {errors.email && (
@@ -118,16 +110,28 @@ export default function LoginPage() {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  className={`appearance-none relative block w-full px-3 py-2 pl-10 border ${
+                  className={`appearance-none relative block w-full px-3 py-2 pl-10 pr-10 border ${
                     errors.password ? 'border-red-300' : 'border-gray-300'
                   } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
               </div>
               {errors.password && (
                 <div className="mt-1 flex items-center text-sm text-red-600">
@@ -145,6 +149,7 @@ export default function LoginPage() {
                 name="remember-me"
                 type="checkbox"
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                disabled={isLoading}
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
                 Remember me
@@ -152,9 +157,12 @@ export default function LoginPage() {
             </div>
 
             <div className="text-sm">
-              <a href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link 
+                href="/forgot-password" 
+                className="font-medium text-blue-600 hover:text-blue-500"
+              >
                 Forgot your password?
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -162,7 +170,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
               {isLoading ? (
                 <div className="flex items-center">
@@ -189,7 +197,7 @@ export default function LoginPage() {
           <div className="mt-6 grid grid-cols-1 gap-3">
             <Link
               href="/register/patient"
-              className="w-full flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
             >
               Register as Patient
             </Link>
@@ -205,6 +213,15 @@ export default function LoginPage() {
               </Link>
             </div>
           </div>
+        </div>
+
+        <div className="mt-4 text-center">
+          <Link 
+            href="/" 
+            className="text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            ← Back to home
+          </Link>
         </div>
       </div>
     </div>

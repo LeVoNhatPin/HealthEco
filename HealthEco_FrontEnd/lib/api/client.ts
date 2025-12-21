@@ -1,13 +1,57 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestConfig } from 'axios';
-import { 
-  AuthResponse, 
-  RegisterRequest, 
-  LoginRequest, 
-  RefreshTokenRequest,
-  User 
-} from '@/lib/types';
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://health-eco-backend.railway.app';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Types
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+}
+
+export interface User {
+  id: number;
+  email: string;
+  fullName: string;
+  role: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+  createdAt: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  fullName: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+}
+
+export interface RefreshTokenRequest {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -77,23 +121,29 @@ class ApiClient {
 
     this.refreshTokenRequest = new Promise(async (resolve, reject) => {
       try {
+        const accessToken = this.getAccessToken();
         const refreshToken = this.getRefreshToken();
-        if (!refreshToken) {
-          throw new Error('No refresh token');
+        
+        if (!accessToken || !refreshToken) {
+          throw new Error('No tokens available');
         }
 
-        const response = await axios.post<AuthResponse>(`${API_URL}/api/auth/refresh-token`, {
-          accessToken: this.getAccessToken(),
-          refreshToken,
-        } as RefreshTokenRequest);
+        const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
+          `${API_URL}/api/auth/refresh-token`, 
+          { accessToken, refreshToken }
+        );
 
-        const { accessToken, refreshToken: newRefreshToken } = response.data;
-        
-        // Store new tokens
-        this.setAccessToken(accessToken);
-        this.setRefreshToken(newRefreshToken);
+        if (response.data.success && response.data.data) {
+          const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data.data;
+          
+          // Store new tokens
+          this.setAccessToken(newAccessToken);
+          this.setRefreshToken(newRefreshToken);
 
-        resolve(accessToken);
+          resolve(newAccessToken);
+        } else {
+          throw new Error(response.data.message || 'Token refresh failed');
+        }
       } catch (error) {
         reject(error);
       } finally {
@@ -131,50 +181,76 @@ class ApiClient {
     }
   }
 
-  private clearTokens(): void {
+  public clearTokens(): void {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
     }
   }
 
-  // Public methods
-  public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.get<T>(url, config);
+  // Public API methods
+  public async get<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.client.get<ApiResponse<T>>(url, config);
     return response.data;
   }
 
-  public async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.post<T>(url, data, config);
+  public async post<T>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.client.post<ApiResponse<T>>(url, data, config);
     return response.data;
   }
 
-  public async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.put<T>(url, data, config);
+  public async put<T>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.client.put<ApiResponse<T>>(url, data, config);
     return response.data;
   }
 
-  public async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.delete<T>(url, config);
+  public async delete<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.client.delete<ApiResponse<T>>(url, config);
     return response.data;
   }
 
   // Auth specific methods
-  public async login(loginData: LoginRequest): Promise<AuthResponse> {
-    return this.post<AuthResponse>('/api/auth/login', loginData);
+  public async login(data: LoginRequest): Promise<ApiResponse<AuthResponse>> {
+    return this.post<AuthResponse>('/api/auth/login', data);
   }
 
-  public async register(registerData: RegisterRequest): Promise<AuthResponse> {
-    return this.post<AuthResponse>('/api/auth/register', registerData);
+  public async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
+    return this.post<AuthResponse>('/api/auth/register', data);
   }
 
-  public async logout(): Promise<void> {
-    this.clearTokens();
+  public async refreshToken(data: RefreshTokenRequest): Promise<ApiResponse<RefreshTokenResponse>> {
+    return this.post<RefreshTokenResponse>('/api/auth/refresh-token', data);
+  }
+
+  public async logout(): Promise<ApiResponse> {
     return this.post('/api/auth/logout');
   }
 
+  public async getCurrentUser(): Promise<ApiResponse<User>> {
+    return this.get<User>('/api/auth/me');
+  }
+
+  // Utility methods
   public isAuthenticated(): boolean {
     return !!this.getAccessToken();
+  }
+
+  public getCurrentUserFromToken(): User | null {
+    const token = this.getAccessToken();
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return {
+        id: parseInt(payload.nameid),
+        email: payload.email,
+        fullName: payload.unique_name,
+        role: payload.role,
+        createdAt: new Date(payload.iat * 1000).toISOString()
+      };
+    } catch {
+      return null;
+    }
   }
 }
 

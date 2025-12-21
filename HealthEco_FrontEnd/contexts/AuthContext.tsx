@@ -1,8 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiClient } from '@/lib/api/client';
-import { User, AuthResponse, RegisterRequest } from '@/lib/types';
+import { apiClient, User, LoginRequest, RegisterRequest } from '@/lib/api/client';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +12,7 @@ interface AuthContextType {
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,45 +32,67 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+
+  const checkAuth = async () => {
+    if (!apiClient.isAuthenticated()) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Try to get user info from token first
+      const userFromToken = apiClient.getCurrentUserFromToken();
+      setUser(userFromToken);
+
+      // Then validate with server
+      const response = await apiClient.getCurrentUser();
+      if (response.success && response.data) {
+        setUser(response.data);
+      } else {
+        // Token might be invalid, clear it
+        apiClient.clearTokens();
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      apiClient.clearTokens();
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkAuth = async () => {
-      try {
-        const accessToken = localStorage.getItem('accessToken');
-        if (accessToken) {
-          // In a real app, you would verify the token with the server
-          // For now, we'll just parse the token to get user info
-          const tokenData = JSON.parse(atob(accessToken.split('.')[1]));
-          setUser({
-            id: parseInt(tokenData.nameid),
-            email: tokenData.email,
-            fullName: tokenData.unique_name,
-            role: tokenData.role,
-          });
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     checkAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response: AuthResponse = await apiClient.login({ email, password });
+      const response = await apiClient.login({ email, password });
       
-      localStorage.setItem('accessToken', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      
-      setUser(response.user);
-    } catch (error) {
+      if (response.success && response.data) {
+        localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+        setUser(response.data.user);
+        toast.success('Login successful!');
+        
+        // Redirect based on role
+        if (response.data.user.role === 'Patient') {
+          router.push('/dashboard/patient');
+        } else if (response.data.user.role === 'Doctor') {
+          router.push('/dashboard/doctor');
+        } else if (response.data.user.role === 'ClinicAdmin') {
+          router.push('/dashboard/clinic');
+        } else {
+          router.push('/dashboard');
+        }
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Login failed. Please try again.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -78,13 +102,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (data: RegisterRequest) => {
     setIsLoading(true);
     try {
-      const response: AuthResponse = await apiClient.register(data);
+      const response = await apiClient.register(data);
       
-      localStorage.setItem('accessToken', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      
-      setUser(response.user);
-    } catch (error) {
+      if (response.success && response.data) {
+        localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+        setUser(response.data.user);
+        toast.success('Registration successful!');
+        
+        // Redirect patient to their dashboard
+        if (response.data.user.role === 'Patient') {
+          router.push('/dashboard/patient');
+        } else {
+          router.push('/dashboard');
+        }
+      } else {
+        throw new Error(response.message || 'Registration failed');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Registration failed. Please try again.');
       throw error;
     } finally {
       setIsLoading(false);
@@ -95,22 +131,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       await apiClient.logout();
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Logout API call failed:', error);
     } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      apiClient.clearTokens();
       setUser(null);
-      window.location.href = '/login';
+      toast.success('Logged out successfully');
+      router.push('/login');
     }
   };
 
-  const value: AuthContextType = {
+  const value = {
     user,
     isLoading,
     login,
     register,
     logout,
     isAuthenticated: !!user,
+    checkAuth,
   };
 
   return (
