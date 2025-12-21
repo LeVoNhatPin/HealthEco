@@ -15,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 /// =======================================================
 builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
+
 /// =======================================================
 /// SERVICES
 /// =======================================================
@@ -70,14 +71,26 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Database
+
+/// =======================================================
+/// DATABASE (RAILWAY + LOCAL)
+/// =======================================================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"));
+    var connectionString =
+        builder.Configuration["DATABASE_URL"]
+        ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+    if (string.IsNullOrWhiteSpace(connectionString))
+        throw new Exception("❌ DATABASE_URL is missing");
+
+    options.UseNpgsql(connectionString);
 });
 
-// JWT settings
+
+/// =======================================================
+/// JWT
+/// =======================================================
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
 
@@ -110,7 +123,10 @@ builder.Services
 // Authorization
 builder.Services.AddAuthorization();
 
-// Dependency Injection
+
+/// =======================================================
+/// DEPENDENCY INJECTION
+/// =======================================================
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
@@ -134,7 +150,6 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseHttpsRedirection();
-
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
@@ -144,7 +159,6 @@ app.UseAuthorization();
 /// =======================================================
 /// ROUTES
 /// =======================================================
-
 app.MapControllers();
 
 // Health check (Railway test)
@@ -166,6 +180,7 @@ if (!app.Environment.IsDevelopment())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
 }
+
 
 /// =======================================================
 /// RUN
