@@ -23,6 +23,7 @@ builder.WebHost.UseUrls("http://0.0.0.0:8080");
 // Controllers
 builder.Services.AddControllers();
 
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -33,7 +34,7 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1"
     });
 
-    // JWT in Swagger
+    // JWT support
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Authorization: Bearer {token}",
@@ -59,6 +60,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+
 // CORS
 builder.Services.AddCors(options =>
 {
@@ -73,16 +75,36 @@ builder.Services.AddCors(options =>
 
 
 /// =======================================================
-/// DATABASE (RAILWAY + LOCAL)
+/// DATABASE (RAILWAY DATABASE_URL + LOCAL FALLBACK)
 /// =======================================================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionString =
-        builder.Configuration["DATABASE_URL"]
-        ?? builder.Configuration.GetConnectionString("DefaultConnection");
+    var databaseUrl = builder.Configuration["DATABASE_URL"];
+    string connectionString;
 
-    if (string.IsNullOrWhiteSpace(connectionString))
-        throw new Exception("❌ DATABASE_URL is missing");
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+    {
+        // Parse postgresql://user:pass@host:port/db
+        var uri = new Uri(databaseUrl);
+        var userInfo = uri.UserInfo.Split(':', 2);
+
+        var username = userInfo[0];
+        var password = userInfo[1];
+
+        connectionString =
+            $"Host={uri.Host};" +
+            $"Port={uri.Port};" +
+            $"Database={uri.AbsolutePath.Trim('/')};" +
+            $"Username={username};" +
+            $"Password={password};" +
+            $"SSL Mode=Require;" +
+            $"Trust Server Certificate=true;";
+    }
+    else
+    {
+        connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? throw new Exception("❌ No database connection string found");
+    }
 
     options.UseNpgsql(connectionString);
 });
@@ -141,7 +163,7 @@ var app = builder.Build();
 /// MIDDLEWARE
 /// =======================================================
 
-// Swagger (enable cả Production)
+// Swagger (enable cả production)
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -161,7 +183,7 @@ app.UseAuthorization();
 /// =======================================================
 app.MapControllers();
 
-// Health check (Railway test)
+// Health check
 app.MapGet("/health", () =>
     Results.Ok(new
     {
@@ -172,7 +194,7 @@ app.MapGet("/health", () =>
 
 
 /// =======================================================
-/// AUTO MIGRATION (PRODUCTION SAFE)
+/// AUTO MIGRATION (PRODUCTION)
 /// =======================================================
 if (!app.Environment.IsDevelopment())
 {
