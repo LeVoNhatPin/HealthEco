@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestConfig } from 'axios';
 
+// IMPORTANT: Use the correct Railway backend URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://healtheco.up.railway.app';
 
 // Types
@@ -129,7 +130,7 @@ class ApiClient {
         }
 
         const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
-          `${API_URL}/api/auth/refresh-token`, 
+          `${API_URL}/api/Auth/refresh-token`, 
           { accessToken, refreshToken }
         );
 
@@ -209,25 +210,25 @@ class ApiClient {
     return response.data;
   }
 
-  // Auth specific methods
+  // IMPORTANT: Update URLs to match backend (capital A in Auth)
   public async login(data: LoginRequest): Promise<ApiResponse<AuthResponse>> {
-    return this.post<AuthResponse>('/api/auth/login', data);
+    return this.post<AuthResponse>('/api/Auth/login', data);
   }
 
   public async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
-    return this.post<AuthResponse>('/api/auth/register', data);
+    return this.post<AuthResponse>('/api/Auth/register', data);
   }
 
   public async refreshToken(data: RefreshTokenRequest): Promise<ApiResponse<RefreshTokenResponse>> {
-    return this.post<RefreshTokenResponse>('/api/auth/refresh-token', data);
+    return this.post<RefreshTokenResponse>('/api/Auth/refresh-token', data);
   }
 
   public async logout(): Promise<ApiResponse> {
-    return this.post<unknown>('/api/auth/logout');
+    return this.post<unknown>('/api/Auth/logout');
   }
 
   public async getCurrentUser(): Promise<ApiResponse<User>> {
-    return this.get<User>('/api/auth/me');
+    return this.get<User>('/api/Auth/me');
   }
 
   // Utility methods
@@ -242,9 +243,9 @@ class ApiClient {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       return {
-        id: parseInt(payload.nameid, 10),
+        id: parseInt(payload.sub, 10),
         email: payload.email,
-        fullName: payload.unique_name,
+        fullName: payload.name,
         role: payload.role,
         createdAt: new Date(payload.iat * 1000).toISOString()
       };

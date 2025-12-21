@@ -29,15 +29,6 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-interface ApiError {
-  message: string;
-  response?: {
-    data?: {
-      message?: string;
-    };
-  };
-}
-
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,9 +70,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      console.log('Attempting login for:', email);
       const response = await apiClient.login({ email, password });
       
       if (response.success && response.data) {
+        console.log('Login successful, setting tokens');
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('refreshToken', response.data.refreshToken);
         setUser(response.data.user);
@@ -102,6 +95,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw new Error(response.message || 'Login failed');
       }
     } catch (error: unknown) {
+      console.error('Login error:', error);
       const errorMessage = error instanceof Error 
         ? error.message 
         : 'Login failed. Please try again.';
@@ -115,9 +109,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (data: RegisterRequest) => {
     setIsLoading(true);
     try {
+      console.log('Attempting registration for:', data.email);
       const response = await apiClient.register(data);
       
       if (response.success && response.data) {
+        console.log('Registration successful, setting tokens');
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('refreshToken', response.data.refreshToken);
         setUser(response.data.user);
@@ -133,6 +129,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw new Error(response.message || 'Registration failed');
       }
     } catch (error: unknown) {
+      console.error('Registration error:', error);
       const errorMessage = error instanceof Error 
         ? error.message 
         : 'Registration failed. Please try again.';
