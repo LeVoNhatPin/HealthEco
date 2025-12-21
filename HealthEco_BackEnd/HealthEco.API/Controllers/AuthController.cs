@@ -39,6 +39,22 @@ namespace HealthEco.API.Controllers
                     });
                 }
 
+                // Parse DateOfBirth from string to DateTime? if needed
+                DateTime? parsedDateOfBirth = null;
+                if (!string.IsNullOrEmpty(request.DateOfBirth))
+                {
+                    if (DateTime.TryParse(request.DateOfBirth, out var dateValue))
+                    {
+                        parsedDateOfBirth = dateValue;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Invalid DateOfBirth format: {request.DateOfBirth}");
+                        // You can either return an error or just store as string
+                        // For now, we'll store as string
+                    }
+                }
+
                 // Create user
                 var user = new User
                 {
@@ -47,7 +63,7 @@ namespace HealthEco.API.Controllers
                     FullName = request.FullName,
                     Role = "Patient", // Default role
                     PhoneNumber = request.PhoneNumber,
-                    DateOfBirth = request.DateOfBirth,
+                    DateOfBirth = request.DateOfBirth, // Store as string
                     Address = request.Address,
                     City = request.City,
                     CreatedAt = DateTime.UtcNow,
@@ -80,7 +96,7 @@ namespace HealthEco.API.Controllers
                             FullName = user.FullName,
                             Role = user.Role,
                             PhoneNumber = user.PhoneNumber,
-                            DateOfBirth = user.DateOfBirth,
+                            DateOfBirth = user.DateOfBirth, // Return as string
                             Address = user.Address,
                             City = user.City,
                             CreatedAt = user.CreatedAt
@@ -258,7 +274,7 @@ namespace HealthEco.API.Controllers
         }
     }
 
-    // Request/Response DTOs
+    // Request/Response DTOs - UPDATED for string DateOfBirth
     public class RegisterRequest
     {
         [Required]
@@ -276,7 +292,7 @@ namespace HealthEco.API.Controllers
         [MaxLength(20)]
         public string? PhoneNumber { get; set; }
 
-        public DateTime? DateOfBirth { get; set; }
+        public string? DateOfBirth { get; set; } // Changed to string
 
         [MaxLength(500)]
         public string? Address { get; set; }
@@ -332,7 +348,7 @@ namespace HealthEco.API.Controllers
         public string FullName { get; set; }
         public string Role { get; set; }
         public string? PhoneNumber { get; set; }
-        public DateTime? DateOfBirth { get; set; }
+        public string? DateOfBirth { get; set; } // Changed to string
         public string? Address { get; set; }
         public string? City { get; set; }
         public DateTime CreatedAt { get; set; }

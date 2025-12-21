@@ -35,7 +35,7 @@ namespace HealthEco.Infrastructure.Identity
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
-                NotBefore = DateTime.UtcNow.AddSeconds(-30), // Allow 30 seconds of clock skew
+                NotBefore = DateTime.UtcNow, // Sửa lại: bắt đầu từ hiện tại
                 Issuer = _jwtSettings.Issuer,
                 Audience = _jwtSettings.Audience,
                 SigningCredentials = new SigningCredentials(

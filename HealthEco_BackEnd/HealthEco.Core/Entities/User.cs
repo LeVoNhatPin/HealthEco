@@ -29,7 +29,7 @@ namespace HealthEco.Core.Entities
         [MaxLength(500)]
         public string? AvatarUrl { get; set; }
 
-        public DateTime? DateOfBirth { get; set; }
+        public string? DateOfBirth { get; set; }
 
         [MaxLength(500)]
         public string? Address { get; set; }
