@@ -17,3 +17,4 @@ D:\HealthEco\HealthEco_BackEnd\HealthEco.Infrastructure\obj\Debug\net8.0\HealthE
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Infrastructure\obj\Debug\net8.0\ref\HealthEco.Infrastructure.dll
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Infrastructure\bin\Debug\net8.0\HealthEco.Application.dll
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Infrastructure\bin\Debug\net8.0\HealthEco.Application.pdb
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Infrastructure\obj\Debug\net8.0\HealthEco.Infrastructure.sourcelink.json

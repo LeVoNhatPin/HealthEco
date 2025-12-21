@@ -9,3 +9,4 @@ D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.dl
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\refint\HealthEco.Core.dll
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.pdb
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\ref\HealthEco.Core.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.sourcelink.json

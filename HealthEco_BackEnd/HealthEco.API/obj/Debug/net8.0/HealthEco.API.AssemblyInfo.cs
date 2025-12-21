@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HealthEco.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1bf8bd745f3734c7df001c08d220d3d83a61bd25")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2477d902239282c4d8b280983b0fc81d50040a67")]
 [assembly: System.Reflection.AssemblyProductAttribute("HealthEco.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HealthEco.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -123,3 +123,13 @@ D:\HealthEco\HealthEco_BackEnd\HealthEco.API\obj\Debug\net8.0\refint\HealthEco.A
 D:\HealthEco\HealthEco_BackEnd\HealthEco.API\obj\Debug\net8.0\HealthEco.API.pdb
 D:\HealthEco\HealthEco_BackEnd\HealthEco.API\obj\Debug\net8.0\HealthEco.API.genruntimeconfig.cache
 D:\HealthEco\HealthEco_BackEnd\HealthEco.API\obj\Debug\net8.0\ref\HealthEco.API.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\obj\Debug\net8.0\HealthEco.API.sourcelink.json
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\BCrypt.Net-Next.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll

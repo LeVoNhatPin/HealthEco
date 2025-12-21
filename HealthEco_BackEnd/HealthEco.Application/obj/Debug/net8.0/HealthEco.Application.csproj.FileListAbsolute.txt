@@ -13,3 +13,4 @@ D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\refint\HealthEco.Application.dll
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.Application.pdb
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\ref\HealthEco.Application.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Application\obj\Debug\net8.0\HealthEco.Application.sourcelink.json
