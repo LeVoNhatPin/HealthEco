@@ -31,11 +31,12 @@ namespace HealthEco.Infrastructure.Identity
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
+            var now = DateTime.UtcNow;
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
-                NotBefore = DateTime.UtcNow, // Sửa lại: bắt đầu từ hiện tại
+                Expires = now.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
+                NotBefore = now.AddSeconds(-30), // Đặt NotBefore sớm hơn 30 giây
                 Issuer = _jwtSettings.Issuer,
                 Audience = _jwtSettings.Audience,
                 SigningCredentials = new SigningCredentials(
