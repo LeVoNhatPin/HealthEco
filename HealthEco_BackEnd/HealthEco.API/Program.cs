@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using Npgsql; // Add this using
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -71,40 +70,11 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Database - FIXED FOR RAILWAY
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-string connectionString;
-
-if (!string.IsNullOrEmpty(databaseUrl))
-{
-    // Parse the DATABASE_URL from Railway
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
-
-    var npgsqlBuilder = new NpgsqlConnectionStringBuilder
-    {
-        Host = uri.Host,
-        Port = uri.Port,
-        Username = userInfo[0],
-        Password = userInfo[1],
-        Database = uri.AbsolutePath.TrimStart('/'),
-        SslMode = SslMode.Require,
-        TrustServerCertificate = true
-    };
-
-    connectionString = npgsqlBuilder.ToString();
-    Console.WriteLine($"Using Railway PostgreSQL: {uri.Host}:{uri.Port}");
-}
-else
-{
-    // Use the connection string from configuration (for local development)
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    Console.WriteLine($"Using local PostgreSQL: {connectionString}");
-}
-
+// Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseNpgsql(connectionString);
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
 // JWT settings
@@ -144,10 +114,12 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
+
 /// =======================================================
 /// BUILD APP
 /// =======================================================
 var app = builder.Build();
+
 
 /// =======================================================
 /// MIDDLEWARE
@@ -168,6 +140,7 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
+
 /// =======================================================
 /// ROUTES
 /// =======================================================
@@ -183,42 +156,18 @@ app.MapGet("/health", () =>
     })
 );
 
+
 /// =======================================================
-/// AUTO MIGRATION WITH RETRY POLICY
+/// AUTO MIGRATION (PRODUCTION SAFE)
 /// =======================================================
-try
+if (!app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-    Console.WriteLine("Attempting to connect to database...");
-
-    // Wait for database to be ready (Railway sometimes takes a moment)
-    var retries = 10;
-    for (int i = 0; i < retries; i++)
-    {
-        try
-        {
-            Console.WriteLine($"Migration attempt {i + 1}/{retries}");
-            db.Database.Migrate();
-            Console.WriteLine("✅ Database migration completed successfully");
-            break;
-        }
-        catch (Npgsql.NpgsqlException ex) when (i < retries - 1)
-        {
-            Console.WriteLine($"⚠️ Database not ready yet. Retrying in 5 seconds... Error: {ex.Message}");
-            Thread.Sleep(5000);
-        }
-    }
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"❌ Database migration failed: {ex.Message}");
-    // Don't crash the app, just log the error
+    db.Database.Migrate();
 }
 
 /// =======================================================
 /// RUN
 /// =======================================================
-Console.WriteLine($"🚀 Application starting on port 8080");
 app.Run();
