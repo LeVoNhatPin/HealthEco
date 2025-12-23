@@ -101,15 +101,15 @@ const login = async (email: string, password: string) => {
 const getDashboardRoute = (role: string) => {
   switch (role) {
     case 'Patient':
-      return '/dashboard/patient';
+      return '/patient';
     case 'Doctor':
-      return '/dashboard/doctor';
+      return '/doctor'; // nếu có
     case 'ClinicAdmin':
-      return '/dashboard/clinic';
+      return '/clinic'; // nếu có
     case 'SystemAdmin':
-      return '/dashboard/admin';
+      return '/admin';
     default:
-      return '/';
+      return '/unauthorized';
   }
 };
 
