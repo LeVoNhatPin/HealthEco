@@ -29,36 +29,36 @@ interface DashboardSidebarProps {
 
 const navigationItems = {
   Patient: [
-    { name: 'Tổng quan', href: '/dashboard/patient', icon: Home },
-    { name: 'Đặt lịch', href: '/dashboard/patient/appointments', icon: Calendar },
-    { name: 'Lịch sử', href: '/dashboard/patient/history', icon: FileText },
-    { name: 'Hồ sơ', href: '/dashboard/patient/profile', icon: User },
-    { name: 'Thông báo', href: '/dashboard/patient/notifications', icon: Bell },
+    { name: 'Tổng quan', href: '/patient', icon: Home },
+    { name: 'Đặt lịch', href: '/patient/appointments', icon: Calendar },
+    { name: 'Lịch sử', href: '/patient/history', icon: FileText },
+    { name: 'Hồ sơ', href: '/patient/profile', icon: User },
+    { name: 'Thông báo', href: '/patient/notifications', icon: Bell },
   ],
   Doctor: [
-    { name: 'Tổng quan', href: '/dashboard/doctor', icon: Home },
-    { name: 'Lịch làm việc', href: '/dashboard/doctor/schedule', icon: Calendar },
-    { name: 'Bệnh nhân', href: '/dashboard/doctor/patients', icon: Users },
-    { name: 'Cuộc hẹn', href: '/dashboard/doctor/appointments', icon: Stethoscope },
-    { name: 'Hồ sơ', href: '/dashboard/doctor/profile', icon: User },
-    { name: 'Thông báo', href: '/dashboard/doctor/notifications', icon: Bell },
+    { name: 'Tổng quan', href: '/doctor', icon: Home },
+    { name: 'Lịch làm việc', href: '/doctor/schedule', icon: Calendar },
+    { name: 'Bệnh nhân', href: '/doctor/patients', icon: Users },
+    { name: 'Cuộc hẹn', href: '/doctor/appointments', icon: Stethoscope },
+    { name: 'Hồ sơ', href: '/doctor/profile', icon: User },
+    { name: 'Thông báo', href: '/doctor/notifications', icon: Bell },
   ],
   ClinicAdmin: [
-    { name: 'Tổng quan', href: '/dashboard/clinic', icon: Home },
-    { name: 'Bác sĩ', href: '/dashboard/clinic/doctors', icon: Users },
-    { name: 'Cuộc hẹn', href: '/dashboard/clinic/appointments', icon: Calendar },
-    { name: 'Phòng khám', href: '/dashboard/clinic/management', icon: Building2 },
-    { name: 'Thống kê', href: '/dashboard/clinic/statistics', icon: BarChart3 },
-    { name: 'Hồ sơ', href: '/dashboard/clinic/profile', icon: User },
+    { name: 'Tổng quan', href: '/clinic', icon: Home },
+    { name: 'Bác sĩ', href: '/clinic/doctors', icon: Users },
+    { name: 'Cuộc hẹn', href: '/clinic/appointments', icon: Calendar },
+    { name: 'Phòng khám', href: '/clinic/management', icon: Building2 },
+    { name: 'Thống kê', href: '/clinic/statistics', icon: BarChart3 },
+    { name: 'Hồ sơ', href: '/clinic/profile', icon: User },
   ],
   SystemAdmin: [
-    { name: 'Tổng quan', href: '/dashboard/admin', icon: Home },
-    { name: 'Người dùng', href: '/dashboard/admin/users', icon: Users },
-    { name: 'Bác sĩ', href: '/dashboard/admin/doctors', icon: Stethoscope },
-    { name: 'Phòng khám', href: '/dashboard/admin/clinics', icon: Building2 },
-    { name: 'Báo cáo', href: '/dashboard/admin/reports', icon: BarChart3 },
-    { name: 'Hệ thống', href: '/dashboard/admin/system', icon: Settings },
-    { name: 'Hồ sơ', href: '/dashboard/admin/profile', icon: User },
+    { name: 'Tổng quan', href: '/admin', icon: Home },
+    { name: 'Người dùng', href: '/admin/users', icon: Users },
+    { name: 'Bác sĩ', href: '/admin/doctors', icon: Stethoscope },
+    { name: 'Phòng khám', href: '/admin/clinics', icon: Building2 },
+    { name: 'Báo cáo', href: '/admin/reports', icon: BarChart3 },
+    { name: 'Hệ thống', href: '/admin/system', icon: Settings },
+    { name: 'Hồ sơ', href: '/admin/profile', icon: User },
   ],
 };
 
@@ -134,7 +134,7 @@ export default function DashboardSidebar({ sidebarOpen, setSidebarOpen }: Dashbo
           {items.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || 
-              (item.href !== '/dashboard/patient' && pathname?.startsWith(item.href));
+              (item.href !== '/patient' && pathname?.startsWith(item.href));
 
             return (
               <Link
