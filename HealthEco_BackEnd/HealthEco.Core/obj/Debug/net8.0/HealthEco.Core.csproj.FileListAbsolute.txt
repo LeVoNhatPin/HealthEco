@@ -10,3 +10,4 @@ D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\refint\HealthEco.
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.pdb
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\ref\HealthEco.Core.dll
 D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.sourcelink.json
+D:\HealthEco\HealthEco_BackEnd\HealthEco.Core\obj\Debug\net8.0\HealthEco.Core.csproj.AssemblyReference.cache

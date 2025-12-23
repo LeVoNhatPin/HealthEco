@@ -133,3 +133,9 @@ D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.Identity
 D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
 D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.Extensions.Caching.Memory.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.Extensions.Logging.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.Extensions.Logging.Abstractions.dll
+D:\HealthEco\HealthEco_BackEnd\HealthEco.API\bin\Debug\net8.0\Microsoft.Extensions.Options.dll

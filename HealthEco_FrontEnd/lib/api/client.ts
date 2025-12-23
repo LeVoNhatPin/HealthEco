@@ -26,6 +26,7 @@ export interface User {
   dateOfBirth?: string;
   address?: string;
   city?: string;
+  avatarUrl?: string;
   createdAt: string;
 }
 

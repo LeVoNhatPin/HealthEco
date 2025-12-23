@@ -67,44 +67,51 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+// Thêm vào AuthContext sau khi login thành công
+const login = async (email: string, password: string) => {
+  try {
     setIsLoading(true);
-    try {
-      console.log('Attempting login for:', email);
-      const response = await apiClient.login({ email, password });
-      
-      if (response.success && response.data) {
-        console.log('Login successful, setting tokens');
-        localStorage.setItem('accessToken', response.data.accessToken);
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-        setUser(response.data.user);
-        toast.success('Login successful!');
-        
-        // Redirect based on role
-        const role = response.data.user.role;
-        if (role === 'Patient') {
-          router.push('/dashboard/patient');
-        } else if (role === 'Doctor') {
-          router.push('/dashboard/doctor');
-        } else if (role === 'ClinicAdmin') {
-          router.push('/dashboard/clinic');
-        } else {
-          router.push('/dashboard');
-        }
-      } else {
-        throw new Error(response.message || 'Login failed');
-      }
-    } catch (error: unknown) {
-      console.error('Login error:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'Login failed. Please try again.';
-      toast.error(errorMessage);
-      throw error;
-    } finally {
-      setIsLoading(false);
+
+    const res = await apiClient.login({ email, password });
+
+    if (!res.success || !res.data) {
+      throw new Error(res.message || 'Đăng nhập thất bại');
     }
-  };
+
+    const { accessToken, refreshToken, user } = res.data;
+
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+
+    setUser(user);
+
+    toast.success('Đăng nhập thành công!');
+    router.push(getDashboardRoute(user.role));
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : 'Đăng nhập thất bại';
+    toast.error(message);
+    throw error;
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+// Helper function để chuyển hướng đúng dashboard
+const getDashboardRoute = (role: string) => {
+  switch (role) {
+    case 'Patient':
+      return '/dashboard/patient';
+    case 'Doctor':
+      return '/dashboard/doctor';
+    case 'ClinicAdmin':
+      return '/dashboard/clinic';
+    case 'SystemAdmin':
+      return '/dashboard/admin';
+    default:
+      return '/';
+  }
+};
 
   const register = async (data: RegisterRequest) => {
     setIsLoading(true);

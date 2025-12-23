@@ -2,6 +2,9 @@
 using HealthEco.Core.Interfaces;
 using HealthEco.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace HealthEco.Infrastructure.Repositories
 {
@@ -17,6 +20,11 @@ namespace HealthEco.Infrastructure.Repositories
         public async Task<User> GetByIdAsync(int id)
         {
             return await _context.Users.FindAsync(id);
+        }
+
+        public async Task<IEnumerable<User>> GetAllAsync()
+        {
+            return await _context.Users.ToListAsync();
         }
 
         public async Task<User> GetByEmailAsync(string email)
