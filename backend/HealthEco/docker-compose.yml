@@ -1,0 +1,6 @@
+services:
+  healtheco.api:
+    image: ${DOCKER_REGISTRY-}healthecoapi
+    build:
+      context: .
+      dockerfile: HealthEco.API/Dockerfile
