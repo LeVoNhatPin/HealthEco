@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="HealthEco.API/HealthEco.API.csproj" />
+  <Project Path="HealthEco.Application/HealthEco.Application.csproj" />
+  <Project Path="HealthEco.Core/HealthEco.Core.csproj" />
+  <Project Path="HealthEco.Infrastructure/HealthEco.Infrastructure.csproj" />
+</Solution>

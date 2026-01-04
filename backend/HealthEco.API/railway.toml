@@ -1,0 +1,13 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthCheckPath = "/api/health"
+healthCheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[variables]
+ASPNETCORE_ENVIRONMENT = "Production"
+ConnectionStrings__DefaultConnection = "${PG_CONNECTION_STRING}"

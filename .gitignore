@@ -1,0 +1,14 @@
+# Visual Studio
+.vs/
+
+# Build
+bin/
+obj/
+
+# Node
+node_modules/
+.next/
+
+# Env
+.env
+.env.local
