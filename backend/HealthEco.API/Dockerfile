@@ -7,24 +7,19 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-# Copy csproj files
 COPY ["HealthEco.API/HealthEco.API.csproj", "HealthEco.API/"]
 COPY ["HealthEco.Application/HealthEco.Application.csproj", "HealthEco.Application/"]
 COPY ["HealthEco.Core/HealthEco.Core.csproj", "HealthEco.Core/"]
 COPY ["HealthEco.Infrastructure/HealthEco.Infrastructure.csproj", "HealthEco.Infrastructure/"]
 
-# Restore dependencies
 RUN dotnet restore "HealthEco.API/HealthEco.API.csproj"
 
-# Copy everything else
 COPY . .
 
-# Build
 WORKDIR "/src/HealthEco.API"
 RUN dotnet build "HealthEco.API.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "HealthEco.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
