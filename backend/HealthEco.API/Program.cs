@@ -14,6 +14,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+// Add detailed logging
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+    logging.SetMinimumLevel(LogLevel.Debug);
+});
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -91,12 +99,66 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 // Cache
 builder.Services.AddDistributedMemoryCache();
 
-// Database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string missing");
+// ✅ FIX: Parse Railway DATABASE_URL
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+string connectionString;
 
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    Console.WriteLine($"🔍 Found DATABASE_URL: {databaseUrl}");
+
+    // Parse DATABASE_URL format: postgresql://user:password@host:port/database
+    // Example: postgresql://postgres:password@containers-us-west-123.railway.app:5432/railway
+
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+
+    if (userInfo.Length < 2)
+    {
+        throw new InvalidOperationException("Invalid DATABASE_URL format: missing user info");
+    }
+
+    var user = userInfo[0];
+    var password = userInfo[1];
+    var host = uri.Host;
+    var port = uri.Port > 0 ? uri.Port : 5432;
+    var database = uri.LocalPath.TrimStart('/');
+
+    // Build connection string for Npgsql
+    connectionString = $"Host={host};Port={port};Database={database};Username={user};Password={password};" +
+                       "SSL Mode=Require;Trust Server Certificate=true";
+
+    Console.WriteLine($"✅ Parsed connection: Host={host}, Port={port}, Database={database}, User={user}");
+}
+else
+{
+    // Fallback to configuration for local development
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string missing");
+
+    Console.WriteLine($"🔍 Using configuration connection string");
+}
+
+Console.WriteLine($"📊 Connection String (sanitized): {connectionString.Replace("Password=", "Password=***")}");
+
+// Database configuration
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+{
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorCodesToAdd: null);
+    });
+
+    // Enable detailed errors for debugging
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
+});
 
 // ✅ REGISTER SEED DATA
 builder.Services.AddTransient<SeedData>();
@@ -107,29 +169,13 @@ var app = builder.Build();
 
 #region Middleware
 
-// Global exception handler (PHẢI ĐẶT SỚM)
-app.UseExceptionHandler(appBuilder =>
+if (app.Environment.IsDevelopment())
 {
-    appBuilder.Run(async context =>
-    {
-        context.Response.StatusCode = 500;
-        context.Response.ContentType = "application/json";
+    app.UseDeveloperExceptionPage();
+}
 
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        var error = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
-
-        logger.LogError(error, "Unhandled exception");
-
-        await context.Response.WriteAsJsonAsync(new
-        {
-            success = false,
-            message = "Internal server error"
-        });
-    });
-});
-
-    app.UseSwagger();
-    app.UseSwaggerUI();
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
@@ -142,27 +188,56 @@ app.MapControllers();
 
 #region Auto Migration + Seed
 
-using (var scope = app.Services.CreateScope())
+try
 {
-    var services = scope.ServiceProvider;
+    Console.WriteLine("🚀 Starting database initialization...");
 
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    var context = services.GetRequiredService<ApplicationDbContext>();
-    var seeder = services.GetRequiredService<SeedData>();
-
-    logger.LogInformation("Checking database...");
-
-    if (await context.Database.CanConnectAsync())
+    using (var scope = app.Services.CreateScope())
     {
-        await context.Database.MigrateAsync();
+        var services = scope.ServiceProvider;
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        var seeder = services.GetRequiredService<SeedData>();
+
+        logger.LogInformation("🔍 Checking database connection...");
+
+        // Test connection
+        var canConnect = await context.Database.CanConnectAsync();
+        if (!canConnect)
+        {
+            logger.LogError("❌ Cannot connect to database!");
+            throw new Exception("Database connection failed");
+        }
+
+        logger.LogInformation("✅ Database connection successful!");
+
+        // Check for pending migrations
+        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+        if (pendingMigrations.Any())
+        {
+            logger.LogInformation("📦 Applying {Count} pending migrations...", pendingMigrations.Count());
+            await context.Database.MigrateAsync();
+            logger.LogInformation("✅ Migrations applied successfully!");
+        }
+        else
+        {
+            logger.LogInformation("✅ No pending migrations.");
+        }
+
+        // Seed data
+        logger.LogInformation("🌱 Seeding data...");
         await seeder.InitializeAsync(context);
+        logger.LogInformation("✅ Data seeding completed!");
     }
-    else
-    {
-        logger.LogError("Cannot connect to database");
-    }
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "💥 Error during startup initialization");
+    // Don't throw here to see the actual error in logs
 }
 
 #endregion
 
+Console.WriteLine("🎉 HealthEco API is starting...");
 app.Run();
