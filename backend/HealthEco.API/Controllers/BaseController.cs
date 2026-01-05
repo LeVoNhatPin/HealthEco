@@ -1,26 +1,37 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HealthEco.API.Controllers
 {
-    public abstract class BaseController : ControllerBase
+    [ApiController]
+    public class BaseController : ControllerBase
     {
-        protected readonly ILogger _logger;
+        protected readonly ILogger<BaseController> _logger;
 
-        protected BaseController(ILogger logger)
+        public BaseController(ILogger<BaseController> logger)
         {
             _logger = logger;
         }
 
         protected int GetUserId()
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            return userIdClaim != null ? int.Parse(userIdClaim.Value) : 0;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return userIdClaim != null ? int.Parse(userIdClaim) : 0;
         }
 
         protected string GetUserEmail()
         {
-            var emailClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Email);
-            return emailClaim?.Value ?? string.Empty;
+            return User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+        }
+
+        protected string GetUserRole()
+        {
+            return User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        }
+
+        protected string GetUserName()
+        {
+            return User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
         }
     }
 }

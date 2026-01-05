@@ -10,7 +10,7 @@ namespace HealthEco.Infrastructure.Data
         {
         }
 
-        public DbSet<User> Users => Set<User>();
+        public DbSet<User> Users => Set<User>();    
         public DbSet<Doctor> Doctors => Set<Doctor>();
         public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
 

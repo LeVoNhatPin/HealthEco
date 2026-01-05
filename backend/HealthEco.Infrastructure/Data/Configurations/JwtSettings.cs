@@ -7,6 +7,6 @@
         public string Audience { get; set; } = null!;
         public int AccessTokenExpirationMinutes { get; set; } = 60;
         public int RefreshTokenExpirationDays { get; set; } = 7;
-        public string FrontendUrl { get; set; } = "https://healtheco.vercel.app";
+        public string FrontendUrl { get; set; } = "https://health-eco.vercel.app/";
     }
 }
