@@ -1,10 +1,7 @@
-/** @type {import('postcss').Postcss} */
-const config = {
+/** @type {import('postcss').Config} */
+module.exports = {
   plugins: {
     tailwindcss: {},
     autoprefixer: {},
-    reactStrictMode: true,
   },
 };
-
-export default config;
