@@ -9,33 +9,26 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
+#region Services
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Configure Swagger
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "HealthEco API",
         Version = "v1",
-        Description = "HealthEco Healthcare Booking Platform API",
-        Contact = new OpenApiContact
-        {
-            Name = "HealthEco Team",
-            Email = "support@healtheco.vn"
-        }
+        Description = "HealthEco Healthcare Booking Platform API"
     });
 
-    // Add JWT Authentication to Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        Description = "Bearer {token}",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Type = SecuritySchemeType.ApiKey
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -54,107 +47,91 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Add CORS - Allow frontend origin
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend",
-        policy =>
-        {
-            policy.WithOrigins(
-                    "http://localhost:3000",
-                    "https://health-eco.vercel.app"
-                )
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
-        });
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "https://health-eco.vercel.app"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 
-// Configure JWT
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 builder.Services.Configure<JwtSettings>(jwtSettings);
 
-// Get JWT secret from configuration
-var jwtSecret = jwtSettings["Secret"];
-if (string.IsNullOrEmpty(jwtSecret))
-{
-    throw new InvalidOperationException("JWT Secret is not configured");
-}
+var jwtSecret = jwtSettings["Secret"]
+    ?? throw new InvalidOperationException("JWT Secret is missing");
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
-    };
-
-    options.Events = new JwtBearerEvents
-    {
-        OnAuthenticationFailed = context =>
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
-            {
-                // Sử dụng indexer để ghi đè nếu đã tồn tại
-                context.Response.Headers["Token-Expired"] = "true";
-            }
-            return Task.CompletedTask;
-        }
-    };
-});
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+        };
+    });
 
 builder.Services.AddAuthorization();
 
-// Register services
+// Application services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
-// Add Distributed Cache (Redis or Memory)
-builder.Services.AddDistributedMemoryCache(); // For development. Use Redis in production
+// Cache
+builder.Services.AddDistributedMemoryCache();
 
-// Database configuration
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrEmpty(connectionString))
-{
-    throw new InvalidOperationException("Database connection string is not configured");
-}
+// Database
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string missing");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString, npgsqlOptions =>
-    {
-        npgsqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorCodesToAdd: null
-        );
-    }));
+    options.UseNpgsql(connectionString));
 
-// Add logging
-builder.Services.AddLogging();
+// ✅ REGISTER SEED DATA
+builder.Services.AddTransient<SeedData>();
+
+#endregion
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
+#region Middleware
+
+// Global exception handler (PHẢI ĐẶT SỚM)
+app.UseExceptionHandler(appBuilder =>
+{
+    appBuilder.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        var error = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+
+        logger.LogError(error, "Unhandled exception");
+
+        await context.Response.WriteAsJsonAsync(new
+        {
+            success = false,
+            message = "Internal server error"
+        });
+    });
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "HealthEco API v1");
-        c.RoutePrefix = "swagger";
-        c.DisplayRequestDuration();
-        c.EnableDeepLinking();
-    });
+    app.UseSwaggerUI();
 }
 
 app.UseCors("AllowFrontend");
@@ -162,105 +139,33 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Add request logging middleware
-app.Use(async (context, next) =>
-{
-    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Request: {Method} {Path}", context.Request.Method, context.Request.Path);
-    await next();
-});
-
 app.MapControllers();
 
-// Add health check endpoint
-app.MapGet("/api/health", () => new {
-    status = "healthy",
-    timestamp = DateTime.UtcNow,
-    service = "HealthEco API"
-});
+#endregion
 
-// Auto migration và seed data
-await ApplyMigrationsAndSeedData(app);
+#region Auto Migration + Seed
 
-// Add global error handler
-app.UseExceptionHandler(exceptionHandlerApp =>
+using (var scope = app.Services.CreateScope())
 {
-    exceptionHandlerApp.Run(async context =>
+    var services = scope.ServiceProvider;
+
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    var seeder = services.GetRequiredService<SeedData>();
+
+    logger.LogInformation("Checking database...");
+
+    if (await context.Database.CanConnectAsync())
     {
-        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        context.Response.ContentType = "application/json";
-
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        var exception = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
-
-        logger.LogError(exception, "Unhandled exception occurred");
-
-        var response = new
-        {
-            success = false,
-            message = "An internal server error occurred",
-            timestamp = DateTime.UtcNow
-        };
-
-        await context.Response.WriteAsJsonAsync(response);
-    });
-});
-
-// Log startup information
-var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
-var startupLogger = loggerFactory.CreateLogger<Program>();
-
-startupLogger.LogInformation("HealthEco API starting up...");
-startupLogger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
-startupLogger.LogInformation("JWT Issuer: {Issuer}", jwtSettings["Issuer"]);
-
-app.Run();
-
-// Auto migration và seed data
-await ApplyMigrationsAndSeedData(app);
-
-// Auto migration function
-async Task ApplyMigrationsAndSeedData(WebApplication app)
-{
-    using var scope = app.Services.CreateScope();
-
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<SeedData>>();
-
-    var seedData = new SeedData(seedLogger);
-
-    try
-    {
-        logger.LogInformation("Checking for database connection...");
-
-        if (await dbContext.Database.CanConnectAsync())
-        {
-            logger.LogInformation("Database connection successful");
-
-            var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
-            var appliedMigrations = await dbContext.Database.GetAppliedMigrationsAsync();
-
-            logger.LogInformation("Applied migrations: {AppliedCount}", appliedMigrations.Count());
-            logger.LogInformation("Pending migrations: {PendingCount}", pendingMigrations.Count());
-
-            if (pendingMigrations.Any())
-            {
-                logger.LogInformation("Applying {Count} pending migrations...", pendingMigrations.Count());
-                await dbContext.Database.MigrateAsync();
-                logger.LogInformation("Database migrations applied successfully!");
-            }
-
-            await seedData.InitializeAsync(dbContext);
-        }
-        else
-        {
-            logger.LogError("Cannot connect to database");
-        }
+        await context.Database.MigrateAsync();
+        await seeder.InitializeAsync(context);
     }
-    catch (Exception ex)
+    else
     {
-        logger.LogError(ex, "An error occurred while applying migrations or seeding data");
-        throw;
+        logger.LogError("Cannot connect to database");
     }
 }
+
+#endregion
+
+app.Run();
