@@ -1,4 +1,4 @@
-﻿namespace HealthEco.Core.Entities.Enums
+﻿namespace HealthEco.Core.Enums
 {
     public enum UserRole
     {
