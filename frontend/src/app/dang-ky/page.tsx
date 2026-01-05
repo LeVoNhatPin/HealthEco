@@ -9,21 +9,21 @@ import { User, Stethoscope, Building, Shield } from 'lucide-react';
 
 const roleOptions = [
   {
-    value: 'Patient',
+    value: 'benh-nhan',
     label: 'Bệnh nhân',
     description: 'Đặt lịch khám và quản lý sức khỏe',
     icon: User,
     color: 'from-blue-500 to-blue-600',
   },
   {
-    value: 'Doctor',
+    value: 'bac-si',
     label: 'Bác sĩ',
     description: 'Cung cấp dịch vụ khám chữa bệnh',
     icon: Stethoscope,
     color: 'from-green-500 to-green-600',
   },
   {
-    value: 'ClinicAdmin',
+    value: 'quan-ly-phong-kham',
     label: 'Quản lý phòng khám',
     description: 'Quản lý phòng khám và đội ngũ',
     icon: Building,
