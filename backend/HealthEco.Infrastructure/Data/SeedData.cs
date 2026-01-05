@@ -5,16 +5,20 @@ using Microsoft.Extensions.Logging;
 
 namespace HealthEco.Infrastructure.Data
 {
-    public static class SeedData
+    public class SeedData
     {
-        public static async Task InitializeAsync(ApplicationDbContext context)
-        {
-            var logger = LoggerFactory.Create(builder =>
-                builder.AddConsole()).CreateLogger<SeedData>();
+        private readonly ILogger<SeedData> _logger;
 
+        public SeedData(ILogger<SeedData> logger)
+        {
+            _logger = logger;
+        }
+
+        public async Task InitializeAsync(ApplicationDbContext context)
+        {
             try
             {
-                logger.LogInformation("Starting database seeding...");
+                _logger.LogInformation("Starting database seeding...");
 
                 // Seed Users
                 await SeedUsersAsync(context);
@@ -22,20 +26,20 @@ namespace HealthEco.Infrastructure.Data
                 // Seed Specializations (nếu có)
                 await SeedSpecializationsAsync(context);
 
-                logger.LogInformation("Database seeding completed!");
+                _logger.LogInformation("Database seeding completed!");
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error seeding database");
+                _logger.LogError(ex, "Error seeding database");
                 throw;
             }
         }
 
-        private static async Task SeedUsersAsync(ApplicationDbContext context)
+        private async Task SeedUsersAsync(ApplicationDbContext context)
         {
             if (!await context.Users.AnyAsync())
             {
-                logger.LogInformation("Seeding users...");
+                _logger.LogInformation("Seeding users...");
 
                 var users = new List<User>
                 {
@@ -115,37 +119,34 @@ namespace HealthEco.Infrastructure.Data
                     await context.SaveChangesAsync();
                 }
 
-                logger.LogInformation("Seeded {Count} users", users.Count);
+                _logger.LogInformation("Seeded {Count} users", users.Count);
             }
             else
             {
-                logger.LogInformation("Users already exist, skipping seeding.");
+                _logger.LogInformation("Users already exist, skipping seeding.");
             }
         }
 
-        private static async Task SeedSpecializationsAsync(ApplicationDbContext context)
+        private async Task SeedSpecializationsAsync(ApplicationDbContext context)
         {
             if (!await context.Specializations.AnyAsync())
             {
-                logger.LogInformation("Seeding specializations...");
+                _logger.LogInformation("Seeding specializations...");
 
                 var specializations = new List<Specialization>
                 {
-                    new Specialization { Name = "General Practitioner", Description = "Primary care doctor", IsActive = true },
-                    new Specialization { Name = "Cardiologist", Description = "Heart specialist", IsActive = true },
-                    new Specialization { Name = "Dermatologist", Description = "Skin specialist", IsActive = true },
-                    new Specialization { Name = "Pediatrician", Description = "Children's doctor", IsActive = true },
-                    new Specialization { Name = "Orthopedic Surgeon", Description = "Bone and joint specialist", IsActive = true }
+                    new Specialization { Name = "General Practitioner", Description = "Primary care doctor", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new Specialization { Name = "Cardiologist", Description = "Heart specialist", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new Specialization { Name = "Dermatologist", Description = "Skin specialist", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new Specialization { Name = "Pediatrician", Description = "Children's doctor", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new Specialization { Name = "Orthopedic Surgeon", Description = "Bone and joint specialist", IsActive = true, CreatedAt = DateTime.UtcNow }
                 };
 
                 await context.Specializations.AddRangeAsync(specializations);
                 await context.SaveChangesAsync();
 
-                logger.LogInformation("Seeded {Count} specializations", specializations.Count);
+                _logger.LogInformation("Seeded {Count} specializations", specializations.Count);
             }
         }
-
-        private static readonly ILogger<SeedData> logger = LoggerFactory.Create(builder =>
-            builder.AddConsole()).CreateLogger<SeedData>();
     }
 }
