@@ -52,6 +52,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authService.login({ email, password });
       if (response.success && response.data) {
         setUser(response.data.user);
+      } else {
+        throw new Error(response.message || 'Đăng nhập thất bại');
       }
     } finally {
       setIsLoading(false);
@@ -64,6 +66,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authService.register(data);
       if (response.success && response.data) {
         setUser(response.data.user);
+      } else {
+        throw new Error(response.message || 'Đăng ký thất bại');
       }
     } finally {
       setIsLoading(false);
