@@ -113,7 +113,6 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-
 builder.Services.AddAuthorization();
 
 // Register services
@@ -131,7 +130,14 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorCodesToAdd: null
+        );
+    }));
 
 // Add logging
 builder.Services.AddLogging();
@@ -173,27 +179,8 @@ app.MapGet("/api/health", () => new {
     service = "HealthEco API"
 });
 
-// Apply migrations and seed data
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-    try
-    {
-        logger.LogInformation("Applying database migrations...");
-        await dbContext.Database.MigrateAsync();
-        logger.LogInformation("Database migrations applied successfully");
-
-        // Seed initial data if needed
-        // await SeedData.Initialize(dbContext);
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "An error occurred while applying migrations");
-        throw;
-    }
-}
+// Auto migration và seed data
+await ApplyMigrationsAndSeedData(app);
 
 // Add global error handler
 app.UseExceptionHandler(exceptionHandlerApp =>
@@ -225,7 +212,55 @@ var startupLogger = loggerFactory.CreateLogger<Program>();
 
 startupLogger.LogInformation("HealthEco API starting up...");
 startupLogger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
-startupLogger.LogInformation("Database: {ConnectionString}", connectionString);
 startupLogger.LogInformation("JWT Issuer: {Issuer}", jwtSettings["Issuer"]);
 
 app.Run();
+
+// Auto migration và seed data
+await ApplyMigrationsAndSeedData(app);
+
+// Auto migration function
+async Task ApplyMigrationsAndSeedData(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<SeedData>>();
+
+    var seedData = new SeedData(seedLogger);
+
+    try
+    {
+        logger.LogInformation("Checking for database connection...");
+
+        if (await dbContext.Database.CanConnectAsync())
+        {
+            logger.LogInformation("Database connection successful");
+
+            var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+            var appliedMigrations = await dbContext.Database.GetAppliedMigrationsAsync();
+
+            logger.LogInformation("Applied migrations: {AppliedCount}", appliedMigrations.Count());
+            logger.LogInformation("Pending migrations: {PendingCount}", pendingMigrations.Count());
+
+            if (pendingMigrations.Any())
+            {
+                logger.LogInformation("Applying {Count} pending migrations...", pendingMigrations.Count());
+                await dbContext.Database.MigrateAsync();
+                logger.LogInformation("Database migrations applied successfully!");
+            }
+
+            await seedData.InitializeAsync(dbContext);
+        }
+        else
+        {
+            logger.LogError("Cannot connect to database");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while applying migrations or seeding data");
+        throw;
+    }
+}
