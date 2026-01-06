@@ -17,12 +17,4 @@
         public int TotalReviews { get; set; } = 0;
         public bool IsVerified { get; set; } = false;
     }
-
-    public class Specialization : BaseEntity
-    {
-        public string Name { get; set; } = null!;
-        public string? Description { get; set; }
-        public string? IconUrl { get; set; }
-        public bool IsActive { get; set; } = true;
-    }
 }

@@ -16,34 +16,16 @@ namespace HealthEco.Infrastructure.Data
 
         public async Task InitializeAsync(ApplicationDbContext context)
         {
+            _logger.LogInformation("Starting database seeding...");
+
             try
             {
-                _logger.LogInformation("Starting database seeding...");
-
-                // Seed Users
-                await SeedUsersAsync(context);
-
-                // Seed Specializations (nếu có)
-                await SeedSpecializationsAsync(context);
-
-                _logger.LogInformation("Database seeding completed!");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error seeding database");
-                throw;
-            }
-        }
-
-        private async Task SeedUsersAsync(ApplicationDbContext context)
-        {
-            if (!await context.Users.AnyAsync())
-            {
-                _logger.LogInformation("Seeding users...");
-
-                var users = new List<User>
+                // Chỉ tạo admin nếu chưa có user nào
+                if (!await context.Users.AnyAsync())
                 {
-                    new User
+                    _logger.LogInformation("Creating initial admin user...");
+
+                    var admin = new User
                     {
                         Email = "admin@healtheco.com",
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
@@ -54,98 +36,23 @@ namespace HealthEco.Infrastructure.Data
                         IsEmailVerified = true,
                         EmailVerifiedAt = DateTime.UtcNow,
                         CreatedAt = DateTime.UtcNow
-                    },
-                    new User
-                    {
-                        Email = "doctor@healtheco.com",
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Doctor123!"),
-                        FullName = "Dr. John Smith",
-                        Role = UserRole.Doctor,
-                        PhoneNumber = "0912345678",
-                        IsActive = true,
-                        IsEmailVerified = true,
-                        EmailVerifiedAt = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    new User
-                    {
-                        Email = "patient@healtheco.com",
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Patient123!"),
-                        FullName = "Jane Doe",
-                        Role = UserRole.Patient,
-                        PhoneNumber = "0909123456",
-                        DateOfBirth = new DateOnly(1990, 1, 1),
-                        Address = "123 Main Street",
-                        City = "Hanoi",
-                        IsActive = true,
-                        IsEmailVerified = true,
-                        EmailVerifiedAt = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    new User
-                    {
-                        Email = "clinic@healtheco.com",
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Clinic123!"),
-                        FullName = "Clinic Manager",
-                        Role = UserRole.ClinicAdmin,
-                        PhoneNumber = "0978123456",
-                        IsActive = true,
-                        IsEmailVerified = true,
-                        EmailVerifiedAt = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow
-                    }
-                };
-
-                await context.Users.AddRangeAsync(users);
-                await context.SaveChangesAsync();
-
-                // Seed Doctor entity
-                var doctorUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "doctor@healtheco.com");
-                if (doctorUser != null)
-                {
-                    var doctor = new Doctor
-                    {
-                        UserId = doctorUser.Id,
-                        MedicalLicense = "LIC-001",
-                        YearsExperience = 10,
-                        Qualifications = "MD, PhD",
-                        Bio = "Experienced general practitioner",
-                        ConsultationFee = 500000,
-                        IsVerified = true,
-                        CreatedAt = DateTime.UtcNow
                     };
 
-                    await context.Doctors.AddAsync(doctor);
+                    await context.Users.AddAsync(admin);
                     await context.SaveChangesAsync();
+
+                    _logger.LogInformation("✅ Admin user created with email: {Email}", admin.Email);
                 }
-
-                _logger.LogInformation("Seeded {Count} users", users.Count);
-            }
-            else
-            {
-                _logger.LogInformation("Users already exist, skipping seeding.");
-            }
-        }
-
-        private async Task SeedSpecializationsAsync(ApplicationDbContext context)
-        {
-            if (!await context.Specializations.AnyAsync())
-            {
-                _logger.LogInformation("Seeding specializations...");
-
-                var specializations = new List<Specialization>
+                else
                 {
-                    new Specialization { Name = "General Practitioner", Description = "Primary care doctor", IsActive = true, CreatedAt = DateTime.UtcNow },
-                    new Specialization { Name = "Cardiologist", Description = "Heart specialist", IsActive = true, CreatedAt = DateTime.UtcNow },
-                    new Specialization { Name = "Dermatologist", Description = "Skin specialist", IsActive = true, CreatedAt = DateTime.UtcNow },
-                    new Specialization { Name = "Pediatrician", Description = "Children's doctor", IsActive = true, CreatedAt = DateTime.UtcNow },
-                    new Specialization { Name = "Orthopedic Surgeon", Description = "Bone and joint specialist", IsActive = true, CreatedAt = DateTime.UtcNow }
-                };
-
-                await context.Specializations.AddRangeAsync(specializations);
-                await context.SaveChangesAsync();
-
-                _logger.LogInformation("Seeded {Count} specializations", specializations.Count);
+                    _logger.LogInformation("✅ Database already has users, skipping seed.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error seeding database");
+                // Không throw exception ở đây để không crash app
+                _logger.LogWarning("Continuing without seed data...");
             }
         }
     }

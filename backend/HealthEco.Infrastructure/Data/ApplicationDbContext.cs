@@ -17,6 +17,9 @@ namespace HealthEco.Infrastructure.Data
         public DbSet<Doctor> Doctors => Set<Doctor>();
         public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
 
+        // Thêm DbSet cho Specialization
+        public DbSet<Specialization> Specializations => Set<Specialization>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
