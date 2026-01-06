@@ -99,7 +99,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 // Cache
 builder.Services.AddDistributedMemoryCache();
 
-// ⭐⭐⭐ FIX RAILWAY DATABASE CONNECTION ⭐⭐⭐
+// FIX RAILWAY DATABASE CONNECTION
 string connectionString;
 
 // Lấy connection string từ Railway biến môi trường
@@ -109,15 +109,11 @@ var configConnectionString = builder.Configuration.GetConnectionString("DefaultC
 // Ưu tiên dùng DATABASE_URL từ Railway
 if (!string.IsNullOrEmpty(railwayDbUrl))
 {
-    Console.WriteLine($"🔍 Found Railway DATABASE_URL: {railwayDbUrl.Substring(0, Math.Min(railwayDbUrl.Length, 50))}...");
+    Console.WriteLine("Found Railway DATABASE_URL: " + railwayDbUrl.Substring(0, Math.Min(railwayDbUrl.Length, 50)) + "...");
 
     try
     {
         // Chuyển đổi từ URL sang connection string
-        // DATABASE_URL có dạng: postgresql://user:password@host:port/dbname
-        // Hoặc: postgres://user:password@host:port/dbname
-
-        // Standardize the URL
         var dbUrl = railwayDbUrl;
         if (dbUrl.StartsWith("postgres://"))
         {
@@ -138,21 +134,19 @@ if (!string.IsNullOrEmpty(railwayDbUrl))
         var port = uri.Port > 0 ? uri.Port : 5432;
         var database = uri.LocalPath.TrimStart('/');
 
-        // Xây dựng connection string cho Npgsql
         connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};" +
                           "SSL Mode=Require;Trust Server Certificate=true;Pooling=true;";
 
-        Console.WriteLine($"✅ Using Railway Database: {host}:{port}/{database}");
+        Console.WriteLine("Using Railway Database: " + host + ":" + port + "/" + database);
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Error parsing DATABASE_URL: {ex.Message}");
+        Console.WriteLine("Error parsing DATABASE_URL: " + ex.Message);
 
-        // Fallback to config if parsing fails
         if (!string.IsNullOrEmpty(configConnectionString))
         {
             connectionString = configConnectionString;
-            Console.WriteLine($"⚠️ Falling back to configuration connection string");
+            Console.WriteLine("Falling back to configuration connection string");
         }
         else
         {
@@ -162,9 +156,8 @@ if (!string.IsNullOrEmpty(railwayDbUrl))
 }
 else if (!string.IsNullOrEmpty(configConnectionString))
 {
-    // Dùng connection string từ config
     connectionString = configConnectionString;
-    Console.WriteLine($"🔍 Using configuration connection string");
+    Console.WriteLine("Using configuration connection string");
 }
 else
 {
@@ -176,7 +169,7 @@ else
 var safeConnectionString = connectionString.Contains("Password=")
     ? connectionString.Substring(0, connectionString.IndexOf("Password=") + 9) + "***"
     : connectionString;
-Console.WriteLine($"📊 Connection String: {safeConnectionString}");
+Console.WriteLine("Connection String: " + safeConnectionString);
 
 // Database configuration
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -189,7 +182,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
             errorCodesToAdd: null);
     });
 
-    // Enable detailed errors for debugging
     if (builder.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
     {
         options.EnableSensitiveDataLogging();
@@ -197,7 +189,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     }
 });
 
-// ✅ REGISTER SEED DATA
+// REGISTER SEED DATA
 builder.Services.AddTransient<SeedData>();
 
 #endregion
@@ -206,14 +198,13 @@ var app = builder.Build();
 
 #region Middleware
 
-// Enable detailed errors in production for debugging
 app.UseDeveloperExceptionPage();
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "HealthEco API V1");
-    c.RoutePrefix = string.Empty; // Set Swagger UI at root
+    c.RoutePrefix = string.Empty;
 });
 
 app.UseCors("AllowFrontend");
@@ -229,7 +220,7 @@ app.MapControllers();
 
 try
 {
-    Console.WriteLine("🚀 Starting database initialization...");
+    Console.WriteLine("Starting database initialization...");
 
     using (var scope = app.Services.CreateScope())
     {
@@ -238,7 +229,7 @@ try
         var context = services.GetRequiredService<ApplicationDbContext>();
         var seeder = services.GetRequiredService<SeedData>();
 
-        logger.LogInformation("🔍 Testing database connection...");
+        logger.LogInformation("Testing database connection...");
 
         // Test connection with timeout
         var retryCount = 0;
@@ -252,17 +243,17 @@ try
                 connected = await context.Database.CanConnectAsync();
                 if (connected)
                 {
-                    logger.LogInformation("✅ Database connection successful!");
+                    logger.LogInformation("Database connection successful!");
                 }
                 else
                 {
-                    logger.LogWarning($"⚠️ Cannot connect to database. Retry {retryCount + 1}/{maxRetries}...");
+                    logger.LogWarning("Cannot connect to database. Retry " + (retryCount + 1) + "/" + maxRetries + "...");
                     await Task.Delay(2000 * (retryCount + 1));
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, $"❌ Database connection error. Retry {retryCount + 1}/{maxRetries}...");
+                logger.LogError(ex, "Database connection error. Retry " + (retryCount + 1) + "/" + maxRetries + "...");
                 await Task.Delay(2000 * (retryCount + 1));
             }
             retryCount++;
@@ -270,7 +261,7 @@ try
 
         if (!connected)
         {
-            logger.LogError("❌ Cannot connect to database after {MaxRetries} attempts!", maxRetries);
+            logger.LogError("Cannot connect to database after " + maxRetries + " attempts!");
             throw new Exception("Database connection failed");
         }
 
@@ -278,35 +269,149 @@ try
         var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
         if (pendingMigrations.Any())
         {
-            logger.LogInformation("📦 Applying {Count} pending migrations...", pendingMigrations.Count());
+            logger.LogInformation("Applying " + pendingMigrations.Count() + " pending migrations...");
             await context.Database.MigrateAsync();
-            logger.LogInformation("✅ Migrations applied successfully!");
+            logger.LogInformation("Migrations applied successfully!");
         }
         else
         {
-            logger.LogInformation("✅ No pending migrations.");
+            logger.LogInformation("No pending migrations.");
         }
 
+        // Đảm bảo các cột trong bảng Users có giá trị mặc định
+        await EnsureDefaultValuesForUserColumns(context, logger);
+
         // Seed data
-        logger.LogInformation("🌱 Seeding data...");
+        logger.LogInformation("Seeding data...");
         await seeder.InitializeAsync(context);
-        logger.LogInformation("✅ Data seeding completed!");
+        logger.LogInformation("Data seeding completed!");
     }
 }
 catch (Exception ex)
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "💥 Error during startup initialization");
+    logger.LogError(ex, "Error during startup initialization");
 
-    // Log additional details for debugging
-    Console.WriteLine($"🔴 Startup Error: {ex.Message}");
+    Console.WriteLine("Startup Error: " + ex.Message);
     if (ex.InnerException != null)
     {
-        Console.WriteLine($"🔴 Inner Exception: {ex.InnerException.Message}");
+        Console.WriteLine("Inner Exception: " + ex.InnerException.Message);
     }
 }
 
 #endregion
 
-Console.WriteLine("🎉 HealthEco API is starting...");
+Console.WriteLine("HealthEco API is starting...");
 app.Run();
+
+// Helper method bên ngoài main method
+async Task EnsureDefaultValuesForUserColumns(ApplicationDbContext context, ILogger<Program> logger)
+{
+    try
+    {
+        logger.LogInformation("Ensuring default values for User table columns...");
+
+        var sql = @"
+            -- Đảm bảo cột IsEmailVerified có default value
+            DO $$ 
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'Users' AND column_name = 'IsEmailVerified'
+                    AND is_nullable = 'NO' AND column_default IS NULL
+                ) THEN
+                    ALTER TABLE ""Users"" 
+                    ALTER COLUMN ""IsEmailVerified"" SET DEFAULT true;
+                END IF;
+            END $$;
+
+            -- Đảm bảo cột ReceiveNotifications có default value
+            DO $$ 
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'Users' AND column_name = 'ReceiveNotifications'
+                    AND is_nullable = 'NO' AND column_default IS NULL
+                ) THEN
+                    ALTER TABLE ""Users"" 
+                    ALTER COLUMN ""ReceiveNotifications"" SET DEFAULT true;
+                END IF;
+            END $$;
+
+            -- Đảm bảo cột ReceiveMarketing có default value
+            DO $$ 
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'Users' AND column_name = 'ReceiveMarketing'
+                    AND is_nullable = 'NO' AND column_default IS NULL
+                ) THEN
+                    ALTER TABLE ""Users"" 
+                    ALTER COLUMN ""ReceiveMarketing"" SET DEFAULT true;
+                END IF;
+            END $$;
+
+            -- Đảm bảo cột IsActive có default value
+            DO $$ 
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'Users' AND column_name = 'IsActive'
+                    AND is_nullable = 'NO' AND column_default IS NULL
+                ) THEN
+                    ALTER TABLE ""Users"" 
+                    ALTER COLUMN ""IsActive"" SET DEFAULT true;
+                END IF;
+            END $$;
+
+            -- Đảm bảo cột ThemePreference có default value
+            DO $$ 
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'Users' AND column_name = 'ThemePreference'
+                    AND column_default IS NOT NULL
+                ) THEN
+                    ALTER TABLE ""Users"" 
+                    ALTER COLUMN ""ThemePreference"" SET DEFAULT 'light';
+                END IF;
+            END $$;
+
+            -- Đảm bảo cột LanguagePreference có default value
+            DO $$ 
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'Users' AND column_name = 'LanguagePreference'
+                    AND column_default IS NOT NULL
+                ) THEN
+                    ALTER TABLE ""Users"" 
+                    ALTER COLUMN ""LanguagePreference"" SET DEFAULT 'vi';
+                END IF;
+            END $$;
+
+            -- Cập nhật các bản ghi hiện có có giá trị null
+            UPDATE ""Users"" 
+            SET ""IsEmailVerified"" = COALESCE(""IsEmailVerified"", true),
+                ""ReceiveNotifications"" = COALESCE(""ReceiveNotifications"", true),
+                ""ReceiveMarketing"" = COALESCE(""ReceiveMarketing"", true),
+                ""IsActive"" = COALESCE(""IsActive"", true),
+                ""ThemePreference"" = COALESCE(""ThemePreference"", 'light'),
+                ""LanguagePreference"" = COALESCE(""LanguagePreference"", 'vi'),
+                ""UpdatedAt"" = CURRENT_TIMESTAMP
+            WHERE ""IsEmailVerified"" IS NULL 
+               OR ""ReceiveNotifications"" IS NULL 
+               OR ""ReceiveMarketing"" IS NULL 
+               OR ""IsActive"" IS NULL 
+               OR ""ThemePreference"" IS NULL 
+               OR ""LanguagePreference"" IS NULL;
+        ";
+
+        await context.Database.ExecuteSqlRawAsync(sql);
+        logger.LogInformation("Successfully ensured default values for User table columns.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Could not ensure default values for User table columns. This may be expected if the columns already have default values.");
+    }
+}

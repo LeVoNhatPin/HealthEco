@@ -27,6 +27,55 @@ namespace HealthEco.Infrastructure.Data
             // Apply all configurations from assembly
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
+            // ⭐⭐⭐ THÊM CẤU HÌNH CHO USER ENTITY ⭐⭐⭐
+            modelBuilder.Entity<User>(entity =>
+            {
+                // Thiết lập giá trị mặc định cho tất cả các cột boolean
+                entity.Property(u => u.IsEmailVerified)
+                    .IsRequired()
+                    .HasDefaultValue(true);
+
+                entity.Property(u => u.ReceiveNotifications)
+                    .IsRequired()
+                    .HasDefaultValue(true);
+
+                entity.Property(u => u.ReceiveMarketing)
+                    .IsRequired()
+                    .HasDefaultValue(true);
+
+                entity.Property(u => u.IsActive)
+                    .IsRequired()
+                    .HasDefaultValue(true);
+
+                // Thiết lập giá trị mặc định cho các cột string
+                entity.Property(u => u.ThemePreference)
+                    .HasDefaultValue("light");
+
+                entity.Property(u => u.LanguagePreference)
+                    .HasDefaultValue("vi");
+
+                // Thiết lập giá trị mặc định cho timestamps
+                entity.Property(u => u.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.Property(u => u.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                // Indexes để tối ưu performance
+                entity.HasIndex(u => u.Email)
+                    .IsUnique();
+
+                entity.HasIndex(u => u.PhoneNumber)
+                    .IsUnique()
+                    .HasFilter("[PhoneNumber] IS NOT NULL");
+
+                entity.HasIndex(u => u.IsActive);
+                entity.HasIndex(u => u.IsEmailVerified);
+                entity.HasIndex(u => u.Role);
+            });
+
             // Fix DateOnly/TimeOnly for PostgreSQL
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
