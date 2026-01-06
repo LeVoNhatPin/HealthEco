@@ -62,45 +62,67 @@ namespace HealthEco.Infrastructure.Services
                 throw new AuthException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt");
             }
 
+            // ⭐⭐⭐ FIX: Tạo user mới với TẤT CẢ giá trị mặc định ⭐⭐⭐
+            var newUser = new User
+            {
+                Email = user.Email,
+                FullName = user.FullName,
+                PhoneNumber = user.PhoneNumber,
+                DateOfBirth = user.DateOfBirth,
+                Address = user.Address,
+                City = user.City,
+                Role = user.Role,
+
+                // Email verification
+                IsEmailVerified = false, // ⭐⭐⭐ QUAN TRỌNG: THÊM DÒNG NÀY ⭐⭐⭐
+                EmailVerificationToken = GenerateSecureToken(),
+                EmailVerifiedAt = null,
+
+                // Password reset (chưa có)
+                ResetPasswordToken = null,
+                ResetPasswordExpires = null,
+
+                // Preferences
+                ThemePreference = "light",
+                LanguagePreference = "vi",
+                ReceiveNotifications = true,
+                ReceiveMarketing = true,
+
+                // Status
+                IsActive = true,
+
+                // Timestamps
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
             // Hash password
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
-
-            // Generate email verification token
-            user.EmailVerificationToken = GenerateSecureToken();
-            user.EmailVerifiedAt = null;
-            user.IsEmailVerified = false;
-
-            // Set default preferences
-            user.ThemePreference = "light";
-            user.LanguagePreference = "vi";
-            user.ReceiveNotifications = true;
-            user.ReceiveMarketing = true;
+            newUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
             // Add user
-            await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
+            await _context.Users.AddAsync(newUser);
+            await _context.SaveChangesAsync(); // Dòng 81
 
             // Create activity log
             var activityLog = new ActivityLog
             {
-                UserId = user.Id,
+                UserId = newUser.Id,
                 Action = "REGISTER",
-                Description = $"Đăng ký tài khoản mới với vai trò {user.Role}",
+                Description = $"Đăng ký tài khoản mới với vai trò {newUser.Role}",
                 CreatedAt = DateTime.UtcNow
             };
             await _context.ActivityLogs.AddAsync(activityLog);
             await _context.SaveChangesAsync();
 
             // Generate tokens
-            var token = GenerateJwtToken(user);
+            var token = GenerateJwtToken(newUser);
             var refreshToken = GenerateRefreshToken();
 
             // Store refresh token in cache
-            await StoreRefreshToken(user.Id, refreshToken);
+            await StoreRefreshToken(newUser.Id, refreshToken);
 
-            return (user, token, refreshToken);
+            return (newUser, token, refreshToken);
         }
-
         public async Task<(User user, string token, string refreshToken)> LoginAsync(string email, string password)
         {
             var user = await _context.Users

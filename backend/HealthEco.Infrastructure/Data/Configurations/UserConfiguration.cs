@@ -1,7 +1,7 @@
-﻿using HealthEco.Core.Entities;
+﻿// HealthEco.Infrastructure/Data/Configurations/UserConfiguration.cs
+using HealthEco.Core.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Numerics;
 
 namespace HealthEco.Infrastructure.Data.Configurations
 {
@@ -17,49 +17,29 @@ namespace HealthEco.Infrastructure.Data.Configurations
                 .IsRequired()
                 .HasMaxLength(255);
 
-            builder.HasIndex(u => u.Email)
-                .IsUnique();
-
             builder.Property(u => u.PasswordHash)
                 .IsRequired();
 
             builder.Property(u => u.FullName)
                 .IsRequired()
-                .HasMaxLength(100);
+                .HasMaxLength(200);
 
             builder.Property(u => u.Role)
+                .IsRequired();
+
+            builder.Property(u => u.IsEmailVerified)
                 .IsRequired()
-                .HasConversion<string>()
-                .HasMaxLength(20);
+                .HasDefaultValue(false);
 
-            builder.Property(u => u.PhoneNumber)
-                .HasMaxLength(20);
-
-            builder.Property(u => u.AvatarUrl)
-                .HasMaxLength(500);
-
-            builder.Property(u => u.City)
-                .HasMaxLength(100);
-
-            builder.Property(u => u.EmailVerificationToken)
-                .HasMaxLength(100);
-
-            builder.Property(u => u.ResetPasswordToken)
-                .HasMaxLength(100);
+            builder.Property(u => u.IsActive)
+                .IsRequired()
+                .HasDefaultValue(true);
 
             builder.Property(u => u.ThemePreference)
-                .HasMaxLength(20)
                 .HasDefaultValue("light");
 
             builder.Property(u => u.LanguagePreference)
-                .HasMaxLength(10)
                 .HasDefaultValue("vi");
-
-            builder.Property(u => u.IsActive)
-                .HasDefaultValue(true);
-
-            builder.Property(u => u.IsEmailVerified)
-                .HasDefaultValue(false);
 
             builder.Property(u => u.ReceiveNotifications)
                 .HasDefaultValue(true);
@@ -67,11 +47,21 @@ namespace HealthEco.Infrastructure.Data.Configurations
             builder.Property(u => u.ReceiveMarketing)
                 .HasDefaultValue(true);
 
-            // Relationships
-            builder.HasOne(u => u.Doctor)
-                .WithOne(d => d.User)
-                .HasForeignKey<Doctor>(d => d.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+            builder.Property(u => u.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("NOW()");
+
+            builder.Property(u => u.UpdatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("NOW()");
+
+            // Indexes
+            builder.HasIndex(u => u.Email)
+                .IsUnique();
+
+            builder.HasIndex(u => u.PhoneNumber)
+                .IsUnique()
+                .HasFilter("[PhoneNumber] IS NOT NULL");
         }
     }
 }
