@@ -15,7 +15,7 @@ namespace HealthEco.Core.Entities
         public string? City { get; set; }
 
         // Email verification
-        public bool IsEmailVerified { get; set; } = false;
+        public bool IsEmailVerified { get; set; } = true;
         public string? EmailVerificationToken { get; set; }
         public DateTime? EmailVerifiedAt { get; set; }
 

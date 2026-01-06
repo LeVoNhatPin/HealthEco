@@ -42,7 +42,7 @@ namespace HealthEco.API.Controllers
                     Address = request.Address,
                     City = request.City,
                     Role = Enum.Parse<UserRole>(request.Role, true),
-                    IsEmailVerified = false,
+                    IsEmailVerified = true,
                 };
 
                 var result = await _authService.RegisterAsync(user, request.Password);
