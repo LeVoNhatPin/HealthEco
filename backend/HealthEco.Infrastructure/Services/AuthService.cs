@@ -73,10 +73,11 @@ namespace HealthEco.Infrastructure.Services
                 City = user.City,
                 Role = user.Role,
 
-                // Email verification
-                IsEmailVerified = false, // ⭐⭐⭐ QUAN TRỌNG: THÊM DÒNG NÀY ⭐⭐⭐
-                EmailVerificationToken = GenerateSecureToken(),
-                EmailVerifiedAt = null,
+                // Email verification - SET TRUE để bỏ qua xác thực
+                IsEmailVerified = true, // ⭐⭐⭐ TRUE thay vì false ⭐⭐⭐
+                EmailVerificationToken = null, // Không cần token nữa
+                EmailVerifiedAt = DateTime.UtcNow, // Set thời gian xác thực luôn
+
 
                 // Password reset (chưa có)
                 ResetPasswordToken = null,
@@ -123,6 +124,8 @@ namespace HealthEco.Infrastructure.Services
 
             return (newUser, token, refreshToken);
         }
+
+
         public async Task<(User user, string token, string refreshToken)> LoginAsync(string email, string password)
         {
             var user = await _context.Users
