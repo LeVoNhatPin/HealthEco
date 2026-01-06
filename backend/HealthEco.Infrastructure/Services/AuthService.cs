@@ -62,47 +62,59 @@ namespace HealthEco.Infrastructure.Services
                 throw new AuthException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt");
             }
 
-            // ⭐⭐⭐ FIX: Tạo user mới với TẤT CẢ giá trị mặc định ⭐⭐⭐
+            // ⭐⭐⭐ FIX: Tạo user mới với TẤT CẢ giá trị ⭐⭐⭐
             var newUser = new User
             {
-                Email = user.Email,
-                FullName = user.FullName,
-                PhoneNumber = user.PhoneNumber,
+                // Thông tin bắt buộc từ request
+                Email = user.Email.ToLower().Trim(),
+                FullName = user.FullName.Trim(),
+                PhoneNumber = user.PhoneNumber?.Trim(),
                 DateOfBirth = user.DateOfBirth,
-                Address = user.Address,
-                City = user.City,
+                Address = user.Address?.Trim(),
+                City = user.City?.Trim(),
                 Role = user.Role,
 
-                // Email verification - SET TRUE để bỏ qua xác thực
-                IsEmailVerified = true, // ⭐⭐⭐ TRUE thay vì false ⭐⭐⭐
-                EmailVerificationToken = null, // Không cần token nữa
-                EmailVerifiedAt = DateTime.UtcNow, // Set thời gian xác thực luôn
+                // ⭐⭐⭐ EMAIL VERIFICATION - AUTO VERIFY ⭐⭐⭐
+                IsEmailVerified = true, // Bỏ qua bước verify
+                EmailVerificationToken = null,
+                EmailVerifiedAt = DateTime.UtcNow,
 
-
-                // Password reset (chưa có)
+                // ⭐⭐⭐ PASSWORD RESET ⭐⭐⭐
                 ResetPasswordToken = null,
                 ResetPasswordExpires = null,
 
-                // Preferences
+                // ⭐⭐⭐ PREFERENCES - SET TẤT CẢ ⭐⭐⭐
                 ThemePreference = "light",
                 LanguagePreference = "vi",
-                ReceiveNotifications = true,
-                ReceiveMarketing = true,
+                ReceiveNotifications = true, // Đây là cột đang bị lỗi
+                ReceiveMarketing = true, // Có thể cũng sẽ bị lỗi
 
-                // Status
+                // ⭐⭐⭐ STATUS ⭐⭐⭐
                 IsActive = true,
 
-                // Timestamps
+                // ⭐⭐⭐ TIMESTAMPS ⭐⭐⭐
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+
+                // ⭐⭐⭐ AVATAR ⭐⭐⭐
+                AvatarUrl = null
             };
 
             // Hash password
             newUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
+            // ⭐⭐⭐ DEBUG: In ra tất cả giá trị ⭐⭐⭐
+            Console.WriteLine($"🔍 Creating user with values:");
+            Console.WriteLine($"  Email: {newUser.Email}");
+            Console.WriteLine($"  IsEmailVerified: {newUser.IsEmailVerified}");
+            Console.WriteLine($"  ReceiveNotifications: {newUser.ReceiveNotifications}");
+            Console.WriteLine($"  ReceiveMarketing: {newUser.ReceiveMarketing}");
+            Console.WriteLine($"  IsActive: {newUser.IsActive}");
+            Console.WriteLine($"  CreatedAt: {newUser.CreatedAt}");
+
             // Add user
             await _context.Users.AddAsync(newUser);
-            await _context.SaveChangesAsync(); // Dòng 81
+            await _context.SaveChangesAsync(); // Dòng 105
 
             // Create activity log
             var activityLog = new ActivityLog
@@ -124,8 +136,6 @@ namespace HealthEco.Infrastructure.Services
 
             return (newUser, token, refreshToken);
         }
-
-
         public async Task<(User user, string token, string refreshToken)> LoginAsync(string email, string password)
         {
             var user = await _context.Users
