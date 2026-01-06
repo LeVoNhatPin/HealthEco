@@ -99,47 +99,84 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 // Cache
 builder.Services.AddDistributedMemoryCache();
 
-// ✅ FIX: Parse Railway DATABASE_URL
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+// ⭐⭐⭐ FIX RAILWAY DATABASE CONNECTION ⭐⭐⭐
 string connectionString;
 
-if (!string.IsNullOrEmpty(databaseUrl))
+// Lấy connection string từ Railway biến môi trường
+var railwayDbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+var configConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Ưu tiên dùng DATABASE_URL từ Railway
+if (!string.IsNullOrEmpty(railwayDbUrl))
 {
-    Console.WriteLine($"🔍 Found DATABASE_URL: {databaseUrl}");
+    Console.WriteLine($"🔍 Found Railway DATABASE_URL: {railwayDbUrl.Substring(0, Math.Min(railwayDbUrl.Length, 50))}...");
 
-    // Parse DATABASE_URL format: postgresql://user:password@host:port/database
-    // Example: postgresql://postgres:password@containers-us-west-123.railway.app:5432/railway
-
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
-
-    if (userInfo.Length < 2)
+    try
     {
-        throw new InvalidOperationException("Invalid DATABASE_URL format: missing user info");
+        // Chuyển đổi từ URL sang connection string
+        // DATABASE_URL có dạng: postgresql://user:password@host:port/dbname
+        // Hoặc: postgres://user:password@host:port/dbname
+
+        // Standardize the URL
+        var dbUrl = railwayDbUrl;
+        if (dbUrl.StartsWith("postgres://"))
+        {
+            dbUrl = dbUrl.Replace("postgres://", "postgresql://");
+        }
+
+        var uri = new Uri(dbUrl);
+        var userInfo = uri.UserInfo.Split(':');
+
+        if (userInfo.Length != 2)
+        {
+            throw new InvalidOperationException("Invalid DATABASE_URL format");
+        }
+
+        var username = userInfo[0];
+        var password = userInfo[1];
+        var host = uri.Host;
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var database = uri.LocalPath.TrimStart('/');
+
+        // Xây dựng connection string cho Npgsql
+        connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};" +
+                          "SSL Mode=Require;Trust Server Certificate=true;Pooling=true;";
+
+        Console.WriteLine($"✅ Using Railway Database: {host}:{port}/{database}");
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Error parsing DATABASE_URL: {ex.Message}");
 
-    var user = userInfo[0];
-    var password = userInfo[1];
-    var host = uri.Host;
-    var port = uri.Port > 0 ? uri.Port : 5432;
-    var database = uri.LocalPath.TrimStart('/');
-
-    // Build connection string for Npgsql
-    connectionString = $"Host={host};Port={port};Database={database};Username={user};Password={password};" +
-                       "SSL Mode=Require;Trust Server Certificate=true";
-
-    Console.WriteLine($"✅ Parsed connection: Host={host}, Port={port}, Database={database}, User={user}");
+        // Fallback to config if parsing fails
+        if (!string.IsNullOrEmpty(configConnectionString))
+        {
+            connectionString = configConnectionString;
+            Console.WriteLine($"⚠️ Falling back to configuration connection string");
+        }
+        else
+        {
+            throw new InvalidOperationException("No valid database connection found", ex);
+        }
+    }
+}
+else if (!string.IsNullOrEmpty(configConnectionString))
+{
+    // Dùng connection string từ config
+    connectionString = configConnectionString;
+    Console.WriteLine($"🔍 Using configuration connection string");
 }
 else
 {
-    // Fallback to configuration for local development
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Connection string missing");
-
-    Console.WriteLine($"🔍 Using configuration connection string");
+    throw new InvalidOperationException("No database connection string configured. " +
+                                       "Please set DATABASE_URL environment variable or DefaultConnection in appsettings.json");
 }
 
-Console.WriteLine($"📊 Connection String (sanitized): {connectionString.Replace("Password=", "Password=***")}");
+// Log connection info (without password)
+var safeConnectionString = connectionString.Contains("Password=")
+    ? connectionString.Substring(0, connectionString.IndexOf("Password=") + 9) + "***"
+    : connectionString;
+Console.WriteLine($"📊 Connection String: {safeConnectionString}");
 
 // Database configuration
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -153,7 +190,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     });
 
     // Enable detailed errors for debugging
-    if (builder.Environment.IsDevelopment())
+    if (builder.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
     {
         options.EnableSensitiveDataLogging();
         options.EnableDetailedErrors();
@@ -169,13 +206,15 @@ var app = builder.Build();
 
 #region Middleware
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseDeveloperExceptionPage();
-}
+// Enable detailed errors in production for debugging
+app.UseDeveloperExceptionPage();
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "HealthEco API V1");
+    c.RoutePrefix = string.Empty; // Set Swagger UI at root
+});
 
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
@@ -199,17 +238,41 @@ try
         var context = services.GetRequiredService<ApplicationDbContext>();
         var seeder = services.GetRequiredService<SeedData>();
 
-        logger.LogInformation("🔍 Checking database connection...");
+        logger.LogInformation("🔍 Testing database connection...");
 
-        // Test connection
-        var canConnect = await context.Database.CanConnectAsync();
-        if (!canConnect)
+        // Test connection with timeout
+        var retryCount = 0;
+        var maxRetries = 5;
+        var connected = false;
+
+        while (!connected && retryCount < maxRetries)
         {
-            logger.LogError("❌ Cannot connect to database!");
-            throw new Exception("Database connection failed");
+            try
+            {
+                connected = await context.Database.CanConnectAsync();
+                if (connected)
+                {
+                    logger.LogInformation("✅ Database connection successful!");
+                }
+                else
+                {
+                    logger.LogWarning($"⚠️ Cannot connect to database. Retry {retryCount + 1}/{maxRetries}...");
+                    await Task.Delay(2000 * (retryCount + 1));
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"❌ Database connection error. Retry {retryCount + 1}/{maxRetries}...");
+                await Task.Delay(2000 * (retryCount + 1));
+            }
+            retryCount++;
         }
 
-        logger.LogInformation("✅ Database connection successful!");
+        if (!connected)
+        {
+            logger.LogError("❌ Cannot connect to database after {MaxRetries} attempts!", maxRetries);
+            throw new Exception("Database connection failed");
+        }
 
         // Check for pending migrations
         var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
@@ -234,7 +297,13 @@ catch (Exception ex)
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
     logger.LogError(ex, "💥 Error during startup initialization");
-    // Don't throw here to see the actual error in logs
+
+    // Log additional details for debugging
+    Console.WriteLine($"🔴 Startup Error: {ex.Message}");
+    if (ex.InnerException != null)
+    {
+        Console.WriteLine($"🔴 Inner Exception: {ex.InnerException.Message}");
+    }
 }
 
 #endregion
