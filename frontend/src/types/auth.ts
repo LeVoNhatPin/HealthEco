@@ -18,48 +18,16 @@ export interface User {
 export interface LoginRequest {
   email: string;
   password: string;
-  rememberMe?: boolean;
-}
-
-export interface LoginResponse {
-  success: boolean;
-  message: string;
-  data?: {
-    token: string;
-    refreshToken: string;
-    user: User;
-  };
 }
 
 export interface RegisterRequest {
   email: string;
   password: string;
-  confirmPassword: string;
+  confirmPassword: string; // ⬅️ PHẢI CÓ
   fullName: string;
   role: 'Patient' | 'Doctor' | 'ClinicAdmin';
   phoneNumber?: string;
-  dateOfBirth?: string;
+  dateOfBirth?: string; // ISO yyyy-MM-dd
   address?: string;
   city?: string;
-  medicalLicense?: string;
-  specializationId?: number;
-  yearsExperience?: number;
-  qualifications?: string;
-  bio?: string;
-  consultationFee?: number;
-}
-
-export interface RegisterResponse {
-  success: boolean;
-  message: string;
-  data?: {
-    token: string;
-    refreshToken: string;
-    user: User;
-  };
-}
-
-export interface ApiError {
-  message: string;
-  errors?: Record<string, string[]>;
 }

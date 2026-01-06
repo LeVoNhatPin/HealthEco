@@ -1,97 +1,153 @@
-import apiClient from '@/lib/api/client';
-import { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, User } from '@/types/auth';
+import apiClient from "@/lib/api/client";
+import { LoginRequest, RegisterRequest, User } from "@/types/auth";
+
+interface ApiResponse<T> {
+    success: boolean;
+    message: string;
+    data?: T;
+}
+
+interface AuthResponse {
+    token: string;
+    refreshToken: string;
+    user: User;
+}
 
 class AuthService {
-  private static instance: AuthService;
+    private static instance: AuthService;
+    private tokenKey = "healtheco_token";
+    private refreshTokenKey = "healtheco_refresh_token";
+    private userKey = "healtheco_user";
 
-  private constructor() {}
+    private constructor() {}
 
-  static getInstance(): AuthService {
-    if (!AuthService.instance) {
-      AuthService.instance = new AuthService();
+    static getInstance(): AuthService {
+        if (!AuthService.instance) {
+            AuthService.instance = new AuthService();
+        }
+        return AuthService.instance;
     }
-    return AuthService.instance;
-  }
 
-  async login(credentials: LoginRequest): Promise<LoginResponse> {
-    try {
-      const response = await apiClient.post<LoginResponse>('/api/v1/auth/login', credentials);
-      
-      if (response.data.success && response.data.data) {
-        localStorage.setItem('healtheco_token', response.data.data.token);
-        localStorage.setItem('healtheco_refresh_token', response.data.data.refreshToken);
-        localStorage.setItem('healtheco_user', JSON.stringify(response.data.data.user));
-        
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.data.token}`;
-      }
-      
-      return response.data;
-    } catch (error: any) {
-      throw error.response?.data || { success: false, message: 'Đã có lỗi xảy ra' };
+    async login(credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> {
+        try {
+            const response = await apiClient.post<ApiResponse<AuthResponse>>(
+                "/api/v1/auth/login",
+                credentials
+            );
+
+            if (response.data.success && response.data.data) {
+                this.setTokens(
+                    response.data.data.token,
+                    response.data.data.refreshToken
+                );
+                this.setUser(response.data.data.user);
+            }
+
+            return response.data;
+        } catch (error: any) {
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Đã có lỗi xảy ra",
+                }
+            );
+        }
     }
-  }
 
-  async register(data: RegisterRequest): Promise<RegisterResponse> {
-    try {
-      const response = await apiClient.post<RegisterResponse>('/api/v1/auth/register', data);
-      
-      if (response.data.success && response.data.data) {
-        localStorage.setItem('healtheco_token', response.data.data.token);
-        localStorage.setItem('healtheco_refresh_token', response.data.data.refreshToken);
-        localStorage.setItem('healtheco_user', JSON.stringify(response.data.data.user));
-        
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.data.token}`;
-      }
-      
-      return response.data;
-    } catch (error: any) {
-      throw error.response?.data || { success: false, message: 'Đã có lỗi xảy ra' };
+    async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
+        try {
+            const response = await apiClient.post<ApiResponse<AuthResponse>>(
+                "/api/v1/auth/register",
+                data
+            );
+
+            if (response.data.success && response.data.data) {
+                this.setTokens(
+                    response.data.data.token,
+                    response.data.data.refreshToken
+                );
+                this.setUser(response.data.data.user);
+            }
+
+            return response.data;
+        } catch (error: any) {
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Đã có lỗi xảy ra",
+                }
+            );
+        }
     }
-  }
 
-  async logout(): Promise<void> {
-    try {
-      await apiClient.post('/api/v1/auth/logout');
-    } finally {
-      this.clearAuth();
+    async logout(): Promise<void> {
+        try {
+            await apiClient.post("/api/v1/auth/logout");
+        } finally {
+            this.clearAuth();
+        }
     }
-  }
 
-  async getCurrentUser(): Promise<User | null> {
-    const userStr = localStorage.getItem('healtheco_user');
-    if (userStr) return JSON.parse(userStr);
+    async getCurrentUser(): Promise<User | null> {
+        const token = this.getToken();
+        if (!token) return null; // ⬅️ chặn gọi API khi chưa login
 
-    try {
-      const response = await apiClient.get<{ success: boolean; data: User }>('/api/v1/auth/me');
-      if (response.data.success) {
-        localStorage.setItem('healtheco_user', JSON.stringify(response.data.data));
-        return response.data.data;
-      }
-      return null;
-    } catch {
-      return null;
+        const user = this.getUser();
+        if (user) return user;
+
+        try {
+            const response = await apiClient.get<ApiResponse<User>>(
+                "/api/v1/auth/me"
+            );
+            if (response.data.success && response.data.data) {
+                this.setUser(response.data.data);
+                return response.data.data;
+            }
+            return null;
+        } catch {
+            return null;
+        }
     }
-  }
 
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('healtheco_token');
-  }
+    isAuthenticated(): boolean {
+        return !!this.getToken();
+    }
 
-  getUser(): User | null {
-    const userStr = localStorage.getItem('healtheco_user');
-    return userStr ? JSON.parse(userStr) : null;
-  }
+    getUser(): User | null {
+        if (typeof window !== "undefined") {
+            const userStr = localStorage.getItem(this.userKey);
+            return userStr ? JSON.parse(userStr) : null;
+        }
+        return null;
+    }
 
-  getToken(): string | null {
-    return localStorage.getItem('healtheco_token');
-  }
+    getToken(): string | null {
+        if (typeof window !== "undefined") {
+            return localStorage.getItem(this.tokenKey);
+        }
+        return null;
+    }
 
-  clearAuth(): void {
-    localStorage.removeItem('healtheco_token');
-    localStorage.removeItem('healtheco_refresh_token');
-    localStorage.removeItem('healtheco_user');
-    delete apiClient.defaults.headers.common['Authorization'];
-  }
+    setTokens(token: string, refreshToken: string): void {
+        if (typeof window !== "undefined") {
+            localStorage.setItem(this.tokenKey, token);
+            localStorage.setItem(this.refreshTokenKey, refreshToken);
+        }
+    }
+
+    setUser(user: User): void {
+        if (typeof window !== "undefined") {
+            localStorage.setItem(this.userKey, JSON.stringify(user));
+        }
+    }
+
+    clearAuth(): void {
+        if (typeof window !== "undefined") {
+            localStorage.removeItem(this.tokenKey);
+            localStorage.removeItem(this.refreshTokenKey);
+            localStorage.removeItem(this.userKey);
+        }
+    }
 }
 
 export const authService = AuthService.getInstance();
