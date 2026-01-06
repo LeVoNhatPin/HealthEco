@@ -23,7 +23,7 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
-  confirmPassword: string; // ⬅️ PHẢI CÓ
+  confirmPassword: string; 
   fullName: string;
   role: 'Patient' | 'Doctor' | 'ClinicAdmin';
   phoneNumber?: string;
