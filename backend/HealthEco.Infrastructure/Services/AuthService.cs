@@ -357,19 +357,19 @@
                 var key = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
 
             var claims = new List<Claim>
-{
-    // ⭐ FIX QUAN TRỌNG NHẤT
-    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                {
+                    // FIX quan trọng nhất
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
 
-    new Claim(ClaimTypes.Email, user.Email),
-    new Claim(ClaimTypes.Name, user.FullName ?? ""),
-    new Claim(ClaimTypes.Role, user.Role.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Name, user.FullName ?? ""),
+                    new Claim(ClaimTypes.Role, user.Role.ToString()),
 
-    new Claim("avatar", user.AvatarUrl ?? ""),
-    new Claim("theme", user.ThemePreference ?? "light"),
+                    new Claim("avatar", user.AvatarUrl ?? ""),
+                    new Claim("theme", user.ThemePreference ?? "light"),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                };
 
-    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-};
 
 
             var tokenDescriptor = new SecurityTokenDescriptor
