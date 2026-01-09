@@ -1,82 +1,97 @@
-    import axios from "axios";
+import axios from "axios";
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-    const apiClient = axios.create({
-        baseURL: API_URL,
-        headers: {
-            "Content-Type": "application/json",
-        },
-    });
+if (!API_URL) {
+    throw new Error("❌ NEXT_PUBLIC_API_URL is not defined");
+}
 
+const apiClient = axios.create({
+    baseURL: API_URL,
+    headers: {
+        "Content-Type": "application/json",
+    },
+});
 
-    // Request interceptor
-    apiClient.interceptors.request.use(
-        (config) => {
+/**
+ * REQUEST INTERCEPTOR
+ */
+apiClient.interceptors.request.use(
+    (config) => {
+        // ❗ KHÔNG gắn token cho register / login
+        const isAuthEndpoint =
+            config.url?.includes("/auth/login") ||
+            config.url?.includes("/auth/register") ||
+            config.url?.includes("/auth/refresh");
+
+        if (!isAuthEndpoint && typeof window !== "undefined") {
             const token = localStorage.getItem("healtheco_token");
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
-            return config;
-        },
-        (error) => {
-            return Promise.reject(error);
         }
-    );
 
-    // Response interceptor
-    apiClient.interceptors.response.use(
-        (response) => response,
-        async (error) => {
-            const originalRequest = error.config;
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
 
-            if (error.response?.status === 401 && !originalRequest._retry) {
-                originalRequest._retry = true;
+/**
+ * RESPONSE INTERCEPTOR
+ */
+apiClient.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
 
-                try {
-                    const refreshToken = localStorage.getItem(
-                        "healtheco_refresh_token"
-                    );
-                    const token = localStorage.getItem("healtheco_token");
+        if (
+            error.response?.status === 401 &&
+            !originalRequest?._retry &&
+            !originalRequest.url?.includes("/auth/login") &&
+            !originalRequest.url?.includes("/auth/register")
+        ) {
+            originalRequest._retry = true;
 
-                    if (token && refreshToken) {
-                        const response = await apiClient.post(
-                            "/api/v1/auth/refresh",
-                            {
-                                token,
-                                refreshToken,
-                            }
-                        );
+            try {
+                const token = localStorage.getItem("healtheco_token");
+                const refreshToken = localStorage.getItem(
+                    "healtheco_refresh_token"
+                );
 
-                        const newToken = response.data.data.token;
-                        const newRefreshToken = response.data.data.refreshToken;
-
-                        localStorage.setItem("healtheco_token", newToken);
-                        localStorage.setItem(
-                            "healtheco_refresh_token",
-                            newRefreshToken
-                        );
-
-                        apiClient.defaults.headers.common[
-                            "Authorization"
-                        ] = `Bearer ${newToken}`;
-                        originalRequest.headers[
-                            "Authorization"
-                        ] = `Bearer ${newToken}`;
-
-                        return apiClient(originalRequest);
-                    }
-                } catch (refreshError) {
-                    localStorage.removeItem("healtheco_token");
-                    localStorage.removeItem("healtheco_refresh_token");
-                    localStorage.removeItem("healtheco_user");
-                    window.location.href = "/dang-nhap";
-                    return Promise.reject(refreshError);
+                if (!token || !refreshToken) {
+                    throw new Error("Missing tokens");
                 }
+
+                const response = await axios.post(
+                    `${API_URL}/api/v1/auth/refresh`,
+                    { token, refreshToken },
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                    }
+                );
+
+                const newToken = response.data.data.token;
+                const newRefreshToken = response.data.data.refreshToken;
+
+                localStorage.setItem("healtheco_token", newToken);
+                localStorage.setItem(
+                    "healtheco_refresh_token",
+                    newRefreshToken
+                );
+
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                return apiClient(originalRequest);
+            } catch (err) {
+                localStorage.clear();
+                window.location.href = "/dang-nhap";
+                return Promise.reject(err);
             }
-
-            return Promise.reject(error);
         }
-    );
 
-    export default apiClient;
+        return Promise.reject(error);
+    }
+);
+
+export default apiClient;
