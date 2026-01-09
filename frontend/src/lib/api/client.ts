@@ -1,13 +1,20 @@
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const getApiUrl = () => {
+    if (typeof window === "undefined") {
+        // SSR / build-time
+        return "";
+    }
 
-if (!API_URL) {
-    throw new Error("❌ NEXT_PUBLIC_API_URL is not defined");
-}
+    const url = process.env.NEXT_PUBLIC_API_URL;
+    if (!url) {
+        console.error("❌ NEXT_PUBLIC_API_URL is not defined");
+    }
+    return url || "";
+};
 
 const apiClient = axios.create({
-    baseURL: API_URL,
+    baseURL: getApiUrl(),
     headers: {
         "Content-Type": "application/json",
     },
@@ -18,13 +25,14 @@ const apiClient = axios.create({
  */
 apiClient.interceptors.request.use(
     (config) => {
-        // ❗ KHÔNG gắn token cho register / login
+        if (typeof window === "undefined") return config;
+
         const isAuthEndpoint =
             config.url?.includes("/auth/login") ||
             config.url?.includes("/auth/register") ||
             config.url?.includes("/auth/refresh");
 
-        if (!isAuthEndpoint && typeof window !== "undefined") {
+        if (!isAuthEndpoint) {
             const token = localStorage.getItem("healtheco_token");
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
@@ -42,11 +50,15 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
+        if (typeof window === "undefined") {
+            return Promise.reject(error);
+        }
+
         const originalRequest = error.config;
 
         if (
             error.response?.status === 401 &&
-            !originalRequest?._retry &&
+            !originalRequest._retry &&
             !originalRequest.url?.includes("/auth/login") &&
             !originalRequest.url?.includes("/auth/register")
         ) {
@@ -62,18 +74,13 @@ apiClient.interceptors.response.use(
                     throw new Error("Missing tokens");
                 }
 
-                const response = await axios.post(
-                    `${API_URL}/api/v1/auth/refresh`,
-                    { token, refreshToken },
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                    }
+                const res = await axios.post(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`,
+                    { token, refreshToken }
                 );
 
-                const newToken = response.data.data.token;
-                const newRefreshToken = response.data.data.refreshToken;
+                const newToken = res.data.data.token;
+                const newRefreshToken = res.data.data.refreshToken;
 
                 localStorage.setItem("healtheco_token", newToken);
                 localStorage.setItem(
