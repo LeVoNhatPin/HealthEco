@@ -142,23 +142,27 @@
                     .Include(u => u.Doctor)
                     .FirstOrDefaultAsync(u => u.Email == email);
 
-                if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            {
+                if (user != null) // ✅ chỉ log khi user tồn tại
                 {
-                    // Log failed attempt
                     var failedLog = new ActivityLog
                     {
-                        UserId = user?.Id ?? 0,
+                        UserId = user.Id,
                         Action = "LOGIN_FAILED",
-                        Description = "Đăng nhập thất bại - Sai email hoặc mật khẩu",
+                        Description = "Đăng nhập thất bại - Sai mật khẩu",
                         CreatedAt = DateTime.UtcNow
                     };
+
                     await _context.ActivityLogs.AddAsync(failedLog);
                     await _context.SaveChangesAsync();
-
-                    throw new AuthException("Email hoặc mật khẩu không đúng");
                 }
 
-                if (!user.IsActive)
+                throw new AuthException("Email hoặc mật khẩu không đúng");
+            }
+
+
+            if (!user.IsActive)
                 {
                     throw new AuthException("Tài khoản đã bị vô hiệu hóa");
                 }
