@@ -358,16 +358,23 @@
 
                 var claims = new List<Claim>
                 {
-                    new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                    new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                    new Claim(JwtRegisteredClaimNames.Name, user.FullName),
-                    new Claim("role", user.Role.ToString()),
+                    // ⭐ BẮT BUỘC
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+
+                    // Chuẩn ASP.NET
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Name, user.FullName ?? ""),
+                    new Claim(ClaimTypes.Role, user.Role.ToString()),
+
+                    // Custom
                     new Claim("avatar", user.AvatarUrl ?? ""),
                     new Claim("theme", user.ThemePreference ?? "light"),
+
+                    // JWT
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
                 };
 
-                var tokenDescriptor = new SecurityTokenDescriptor
+            var tokenDescriptor = new SecurityTokenDescriptor
                 {
                     Subject = new ClaimsIdentity(claims),
                     Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
