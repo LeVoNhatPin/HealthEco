@@ -2,14 +2,15 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService } from '@/services/auth.service';
-import { User } from '@/types/auth';
+import { AuthResponse, User } from '@/types/auth';
+import { ApiResponse } from '@/types/api';
 
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<void>;
-    register: (data: any) => Promise<void>;
+    register: (data: any) => Promise<ApiResponse<AuthResponse>>;
     logout: () => Promise<void>;
 }
 
@@ -64,11 +65,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsLoading(true);
         try {
             const response = await authService.register(data);
+
+            // Kiểm tra response structure
             if (response.success && response.data) {
                 setUser(response.data.user);
+                return response; // Trả về response để page xử lý
             } else {
                 throw new Error(response.message || 'Đăng ký thất bại');
             }
+        } catch (error: any) {
+            console.error('AuthContext register error:', error);
+            throw error; // Re-throw để page bắt
         } finally {
             setIsLoading(false);
         }

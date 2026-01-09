@@ -56,10 +56,27 @@ class AuthService {
 
     async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
         try {
+            // Đảm bảo gửi đúng cấu trúc mà backend mong đợi
+            const registerData = {
+                email: data.email,
+                password: data.password,
+                confirmPassword: data.confirmPassword, // ⭐ THÊM DÒNG NÀY
+                fullName: data.fullName,
+                role: data.role,
+                phoneNumber: data.phoneNumber || undefined,
+                dateOfBirth: data.dateOfBirth || undefined,
+                address: data.address || undefined,
+                city: data.city || undefined,
+            };
+
+            console.log("Sending register data:", registerData); // Debug
+
             const response = await apiClient.post<ApiResponse<AuthResponse>>(
                 "/api/v1/auth/register",
-                data
+                registerData
             );
+
+            console.log("Register response:", response.data); // Debug
 
             if (response.data.success && response.data.data) {
                 this.setTokens(
@@ -71,6 +88,12 @@ class AuthService {
 
             return response.data;
         } catch (error: any) {
+            console.error("Register error details:", {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message,
+            });
+
             throw (
                 error.response?.data || {
                     success: false,
