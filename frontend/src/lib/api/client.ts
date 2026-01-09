@@ -1,20 +1,22 @@
 import axios from "axios";
 
+/**
+ * Lấy API URL an toàn (client-only)
+ */
 const getApiUrl = () => {
-    if (typeof window === "undefined") {
-        // SSR / build-time
+    const url = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!url) {
+        if (process.env.NODE_ENV === "development") {
+            console.warn("⚠️ NEXT_PUBLIC_API_URL is not defined");
+        }
         return "";
     }
 
-    const url = process.env.NEXT_PUBLIC_API_URL;
-    if (!url) {
-        console.error("❌ NEXT_PUBLIC_API_URL is not defined");
-    }
-    return url || "";
+    return url;
 };
 
 const apiClient = axios.create({
-    baseURL: getApiUrl(),
     headers: {
         "Content-Type": "application/json",
     },
@@ -25,14 +27,17 @@ const apiClient = axios.create({
  */
 apiClient.interceptors.request.use(
     (config) => {
-        if (typeof window === "undefined") return config;
+        // ✅ GÁN baseURL TẠI THỜI ĐIỂM REQUEST
+        if (!config.baseURL) {
+            config.baseURL = getApiUrl();
+        }
 
         const isAuthEndpoint =
             config.url?.includes("/auth/login") ||
             config.url?.includes("/auth/register") ||
             config.url?.includes("/auth/refresh");
 
-        if (!isAuthEndpoint) {
+        if (!isAuthEndpoint && typeof window !== "undefined") {
             const token = localStorage.getItem("healtheco_token");
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
@@ -74,10 +79,11 @@ apiClient.interceptors.response.use(
                     throw new Error("Missing tokens");
                 }
 
-                const res = await axios.post(
-                    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`,
-                    { token, refreshToken }
-                );
+                // ✅ DÙNG CHÍNH apiClient
+                const res = await apiClient.post("/api/v1/auth/refresh", {
+                    token,
+                    refreshToken,
+                });
 
                 const newToken = res.data.data.token;
                 const newRefreshToken = res.data.data.refreshToken;
