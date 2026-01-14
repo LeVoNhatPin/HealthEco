@@ -68,29 +68,70 @@ namespace HealthEco.Infrastructure.Services
         // ========================= LOGIN =========================
         public async Task<(User user, string token, string refreshToken)> LoginAsync(string email, string password)
         {
-            var user = await _context.Users
-                .Include(x => x.Doctor)
-                .ThenInclude(d => d.Specialization)
-                .FirstOrDefaultAsync(x => x.Email == email);
+            try
+            {
+                _logger.LogInformation($"Attempting login for email: {email}");
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
-                throw new AuthException("Email hoặc mật khẩu không đúng");
+                // SỬA: Chỉ lấy user cơ bản, không include Doctor
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(x => x.Email == email);
 
-            if (!user.IsActive)
-                throw new AuthException("Tài khoản bị khóa");
+                _logger.LogInformation($"User found: {user != null}, IsEmailVerified: {user?.IsEmailVerified}, IsActive: {user?.IsActive}");
 
-            if (!user.IsEmailVerified)
-                throw new AuthException("Email chưa xác thực");
+                if (user == null)
+                {
+                    _logger.LogWarning($"User not found for email: {email}");
+                    throw new AuthException("Email hoặc mật khẩu không đúng");
+                }
 
-            var token = GenerateJwtToken(user);
-            var refreshToken = GenerateRefreshToken();
-            await StoreRefreshToken(user.Id, refreshToken);
+                // Kiểm tra password
+                bool passwordValid;
+                try
+                {
+                    passwordValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"BCrypt verification failed for email: {email}");
+                    throw new AuthException("Lỗi xác thực mật khẩu");
+                }
 
-            await LogActivity(user.Id, "LOGIN_SUCCESS", "Đăng nhập thành công");
+                _logger.LogInformation($"Password valid: {passwordValid}");
 
-            return (user, token, refreshToken);
+                if (!passwordValid)
+                {
+                    _logger.LogWarning($"Invalid password for email: {email}");
+                    throw new AuthException("Email hoặc mật khẩu không đúng");
+                }
+
+                if (!user.IsActive)
+                {
+                    _logger.LogWarning($"User account inactive: {email}");
+                    throw new AuthException("Tài khoản bị khóa");
+                }
+
+                if (!user.IsEmailVerified)
+                {
+                    _logger.LogWarning($"Email not verified: {email}");
+                    throw new AuthException("Email chưa xác thực");
+                }
+
+                var token = GenerateJwtToken(user);
+                var refreshToken = GenerateRefreshToken();
+                await StoreRefreshToken(user.Id, refreshToken);
+
+                _logger.LogInformation($"Login successful, user ID: {user.Id}, Role: {user.Role}");
+
+                await LogActivity(user.Id, "LOGIN_SUCCESS", "Đăng nhập thành công");
+
+                return (user, token, refreshToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error in LoginAsync for email: {email}");
+                throw;
+            }
         }
-
         // ========================= REFRESH TOKEN =========================
         public async Task<(User user, string token, string refreshToken)> RefreshTokenAsync(string token, string refreshToken)
         {
