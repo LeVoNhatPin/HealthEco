@@ -257,4 +257,39 @@ using (var scope = app.Services.CreateScope())
 
 #endregion
 
+#region GLOBAL EXCEPTION HANDLING
+
+app.UseExceptionHandler(exceptionHandlerApp =>
+{
+    exceptionHandlerApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+
+        if (exceptionHandlerPathFeature?.Error != null)
+        {
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(exceptionHandlerPathFeature.Error, "Unhandled exception");
+
+            var errorResponse = new
+            {
+                Success = false,
+                Message = "An internal server error occurred",
+                Error = exceptionHandlerPathFeature.Error.Message,
+                Path = exceptionHandlerPathFeature.Path,
+                Timestamp = DateTime.UtcNow
+            };
+
+            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(errorResponse));
+        }
+    });
+});
+
+// Bật detailed errors
+app.UseDeveloperExceptionPage();
+
+#endregion
+
 app.Run();

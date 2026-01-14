@@ -17,15 +17,18 @@ namespace HealthEco.API.Controllers
         private readonly IAuthService _authService;
         private readonly IEmailService _emailService;
         private readonly JwtSettings _jwtSettings;
+        private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             IAuthService authService,
             IEmailService emailService,
-            IOptions<JwtSettings> jwtSettings)
+            IOptions<JwtSettings> jwtSettings,
+            ILogger<AuthController> logger)
         {
             _authService = authService;
             _emailService = emailService;
             _jwtSettings = jwtSettings.Value;
+            _logger = logger;
         }
 
         [HttpPost("register")]
@@ -74,15 +77,76 @@ namespace HealthEco.API.Controllers
             }
         }
 
+        [HttpGet("test-simple")]
+        [AllowAnonymous]
+        public IActionResult TestSimple()
+        {
+            try
+            {
+                return Ok(new
+                {
+                    status = "API is running",
+                    timestamp = DateTime.UtcNow,
+                    service = "AuthController",
+                    version = "1.0"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
+
+        [HttpPost("test-bcrypt")]
+        [AllowAnonymous]
+        public IActionResult TestBcrypt([FromBody] TestBcryptRequest request)
+        {
+            try
+            {
+                var hash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                var verify = BCrypt.Net.BCrypt.Verify(request.Password, hash);
+
+                return Ok(new
+                {
+                    password = request.Password,
+                    hash = hash,
+                    verifyResult = verify,
+                    hashStartsWith = hash.Substring(0, Math.Min(10, hash.Length))
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
+
+        public class TestBcryptRequest
+        {
+            public string Password { get; set; } = null!;
+        }
+
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             try
             {
+                _logger.LogInformation($"Login attempt for email: {request.Email}");
+
                 var result = await _authService.LoginAsync(request.Email, request.Password);
                 var user = result.user;
                 var token = result.token;
                 var refreshToken = result.refreshToken;
+
+                _logger.LogInformation($"Login successful for user: {user.Email}, ID: {user.Id}");
 
                 var response = new AuthResponse
                 {
@@ -100,14 +164,32 @@ namespace HealthEco.API.Controllers
             }
             catch (AuthException ex)
             {
+                _logger.LogWarning($"AuthException in login: {ex.Message}");
                 return Unauthorized(new AuthResponse
                 {
                     Success = false,
                     Message = ex.Message
                 });
             }
-        }
+            catch (Exception ex)
+            {
+                // TRẢ VỀ ERROR DETAILS ĐỂ DEBUG
+                _logger.LogError(ex, $"Exception in login for email: {request.Email}");
 
+                // Cho phép trả về chi tiết lỗi trong production để debug
+                var errorResponse = new
+                {
+                    success = false,
+                    message = "Internal server error",
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace?.Split('\n').Take(5).ToList(), // Chỉ lấy 5 dòng đầu
+                    innerException = ex.InnerException?.Message,
+                    source = ex.Source
+                };
+
+                return StatusCode(500, errorResponse);
+            }
+        }
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
         {

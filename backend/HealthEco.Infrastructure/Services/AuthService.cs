@@ -74,9 +74,8 @@ namespace HealthEco.Infrastructure.Services
             {
                 _logger.LogInformation($"Login attempt for email: {email}");
 
-                // CHỈ LẤY USER, KHÔNG INCLUDE
+                // SỬA: XÓA AsNoTracking()
                 var user = await _context.Users
-                    .AsNoTracking()
                     .FirstOrDefaultAsync(x => x.Email == email);
 
                 if (user == null)
@@ -99,12 +98,19 @@ namespace HealthEco.Infrastructure.Services
 
                 if (!isBcryptHash)
                 {
-                    _logger.LogError($"User {user.Id} has non-BCrypt password hash: {user.PasswordHash.Substring(0, Math.Min(20, user.PasswordHash.Length))}");
+                    _logger.LogError($"User {user.Id} has non-BCrypt password hash");
 
-                    // TỰ ĐỘNG CONVERT NẾU CẦN
-                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
-                    await _context.SaveChangesAsync();
-                    _logger.LogInformation($"Converted password hash to BCrypt for user {user.Id}");
+                    // TẠO USER MỚI ĐỂ UPDATE
+                    var userToUpdate = await _context.Users.FindAsync(user.Id);
+                    if (userToUpdate != null)
+                    {
+                        userToUpdate.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+                        await _context.SaveChangesAsync();
+                        _logger.LogInformation($"Converted password hash to BCrypt for user {user.Id}");
+
+                        // CẬP NHẬT BIẾN USER LOCAL
+                        user.PasswordHash = userToUpdate.PasswordHash;
+                    }
                 }
 
                 // VERIFY PASSWORD
@@ -154,7 +160,6 @@ namespace HealthEco.Infrastructure.Services
                 throw;
             }
         }
-
         // ========================= REFRESH TOKEN =========================
         public async Task<(User user, string token, string refreshToken)> RefreshTokenAsync(string token, string refreshToken)
         {
