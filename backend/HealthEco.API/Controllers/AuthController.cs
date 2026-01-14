@@ -1,6 +1,6 @@
 ﻿using HealthEco.Core.Configuration;
 using HealthEco.Core.DTOs;
-using HealthEco.Core.DTOs.AuthDto;
+using HealthEco.Core.DTOs.Auth;
 using HealthEco.Core.Entities;
 using HealthEco.Core.Enums;
 using HealthEco.Infrastructure.Services;
