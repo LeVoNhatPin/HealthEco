@@ -66,17 +66,18 @@ namespace HealthEco.Infrastructure.Services
         }
 
         // ========================= LOGIN =========================
+
+
         public async Task<(User user, string token, string refreshToken)> LoginAsync(string email, string password)
         {
             try
             {
-                _logger.LogInformation($"Attempting login for email: {email}");
+                _logger.LogInformation($"Login attempt for email: {email}");
 
-                // SỬA: Chỉ lấy user cơ bản, không include Doctor
+                // CHỈ LẤY USER, KHÔNG INCLUDE
                 var user = await _context.Users
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(x => x.Email == email);
-
-                _logger.LogInformation($"User found: {user != null}, IsEmailVerified: {user?.IsEmailVerified}, IsActive: {user?.IsActive}");
 
                 if (user == null)
                 {
@@ -84,7 +85,29 @@ namespace HealthEco.Infrastructure.Services
                     throw new AuthException("Email hoặc mật khẩu không đúng");
                 }
 
-                // Kiểm tra password
+                // KIỂM TRA PASSWORD HASH
+                if (string.IsNullOrEmpty(user.PasswordHash))
+                {
+                    _logger.LogError($"User {user.Id} has null or empty PasswordHash");
+                    throw new AuthException("Tài khoản không hợp lệ. Vui lòng reset mật khẩu.");
+                }
+
+                // KIỂM TRA FORMAT PASSWORD HASH
+                bool isBcryptHash = user.PasswordHash.StartsWith("$2a$") ||
+                                    user.PasswordHash.StartsWith("$2b$") ||
+                                    user.PasswordHash.StartsWith("$2y$");
+
+                if (!isBcryptHash)
+                {
+                    _logger.LogError($"User {user.Id} has non-BCrypt password hash: {user.PasswordHash.Substring(0, Math.Min(20, user.PasswordHash.Length))}");
+
+                    // TỰ ĐỘNG CONVERT NẾU CẦN
+                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation($"Converted password hash to BCrypt for user {user.Id}");
+                }
+
+                // VERIFY PASSWORD
                 bool passwordValid;
                 try
                 {
@@ -92,11 +115,9 @@ namespace HealthEco.Infrastructure.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"BCrypt verification failed for email: {email}");
+                    _logger.LogError(ex, $"BCrypt verification failed for user {user.Id}");
                     throw new AuthException("Lỗi xác thực mật khẩu");
                 }
-
-                _logger.LogInformation($"Password valid: {passwordValid}");
 
                 if (!passwordValid)
                 {
@@ -116,6 +137,7 @@ namespace HealthEco.Infrastructure.Services
                     throw new AuthException("Email chưa xác thực");
                 }
 
+                // TẠO TOKEN
                 var token = GenerateJwtToken(user);
                 var refreshToken = GenerateRefreshToken();
                 await StoreRefreshToken(user.Id, refreshToken);
@@ -132,6 +154,7 @@ namespace HealthEco.Infrastructure.Services
                 throw;
             }
         }
+
         // ========================= REFRESH TOKEN =========================
         public async Task<(User user, string token, string refreshToken)> RefreshTokenAsync(string token, string refreshToken)
         {
