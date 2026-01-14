@@ -4,20 +4,26 @@ namespace HealthEco.Core.DTOs.AuthDto
 {
     public class RegisterRequest
     {
-        [Required] public string Email { get; set; }
-        [Required] public string Password { get; set; }
+        [Required(ErrorMessage = "Email là bắt buộc")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ")]
+        public required string Email { get; set; }
 
-        [Required]
-        [Compare("Password")]
-        public string ConfirmPassword { get; set; }   // ⬅️ BẮT BUỘC
+        [Required(ErrorMessage = "Mật khẩu là bắt buộc")]
+        public required string Password { get; set; }
 
-        [Required] public string FullName { get; set; }
-        [Required] public string Role { get; set; }
+        [Required(ErrorMessage = "Xác nhận mật khẩu là bắt buộc")]
+        [Compare("Password", ErrorMessage = "Mật khẩu không khớp")]
+        public required string ConfirmPassword { get; set; }
 
+        [Required(ErrorMessage = "Họ tên là bắt buộc")]
+        public required string FullName { get; set; }
+
+        [Required(ErrorMessage = "Vai trò là bắt buộc")]
+        public required string Role { get; set; }
+
+        // Thêm các property optional khác nếu cần
         public string? PhoneNumber { get; set; }
         public DateOnly? DateOfBirth { get; set; }
-        public string? Address { get; set; }
-        public string? City { get; set; }
     }
 
     public class LoginRequest

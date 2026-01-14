@@ -91,14 +91,42 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
 var jwtSettings = configuration.GetSection("JwtSettings");
 
-var jwtSecret = jwtSettings["Secret"]
-    ?? throw new InvalidOperationException("JWT Secret is missing");
+// THÊM log để debug JWT settings
+var logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<Program>();
+
+var jwtSecret = jwtSettings["Secret"];
+if (string.IsNullOrEmpty(jwtSecret))
+{
+    logger.LogError("JWT Secret is missing! Check appsettings.json");
+    throw new InvalidOperationException("JWT Secret is missing");
+}
+else
+{
+    logger.LogInformation($"JWT Secret loaded. Length: {jwtSecret.Length}");
+    logger.LogInformation($"JWT Issuer: {jwtSettings["Issuer"]}");
+    logger.LogInformation($"JWT Audience: {jwtSettings["Audience"]}");
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = true;
+        options.RequireHttpsMetadata = false; // Đổi thành false cho development
         options.SaveToken = true;
+
+        // THÊM logging cho JWT
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                logger.LogError($"Authentication failed: {context.Exception.Message}");
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                logger.LogInformation("Token validated successfully");
+                return Task.CompletedTask;
+            }
+        };
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -112,7 +140,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtSecret)
-            )
+            ),
+
+            ClockSkew = TimeSpan.Zero // Không có độ trễ
         };
     });
 
@@ -207,21 +237,21 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var seeder = scope.ServiceProvider.GetRequiredService<SeedData>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
     try
     {
-        logger.LogInformation("🔄 Applying migrations...");
+        migrationLogger.LogInformation("🔄 Applying migrations...");
         await context.Database.MigrateAsync();
 
-        logger.LogInformation("🌱 Seeding data...");
+        migrationLogger.LogInformation("🌱 Seeding data...");
         await seeder.InitializeAsync(context);
 
-        logger.LogInformation("✅ Database ready");
+        migrationLogger.LogInformation("✅ Database ready");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ Database init failed");
+        migrationLogger.LogError(ex, "❌ Database init failed");
     }
 }
 

@@ -212,14 +212,18 @@ namespace HealthEco.Infrastructure.Services
         new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
         new Claim(ClaimTypes.Email, user.Email),
         new Claim(ClaimTypes.Name, user.FullName ?? ""),
-        new Claim(ClaimTypes.Role, user.Role.ToString())
+        new Claim(ClaimTypes.Role, user.Role.ToString()) // Đây là enum UserRole
     };
 
-            if (user.Role == UserRole.Doctor && user.Doctor != null)
-            {
-                claims.Add(new Claim("doctorVerified", user.Doctor.IsVerified.ToString()));
-                claims.Add(new Claim("doctorLicense", user.Doctor.MedicalLicense));
-            }
+            // THÊM LOG để debug
+            _logger.LogInformation($"Generating JWT for user: {user.Email}, Role: {user.Role}");
+
+            // Xóa phần doctor claims nếu không cần thiết cho patient
+            // if (user.Role == UserRole.Doctor && user.Doctor != null)
+            // {
+            //     claims.Add(new Claim("doctorVerified", user.Doctor.IsVerified.ToString()));
+            //     claims.Add(new Claim("doctorLicense", user.Doctor.MedicalLicense));
+            // }
 
             var token = new JwtSecurityToken(
                 issuer: _jwt.Issuer,
@@ -231,7 +235,6 @@ namespace HealthEco.Infrastructure.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
-
         private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
         {
             var parameters = new TokenValidationParameters
