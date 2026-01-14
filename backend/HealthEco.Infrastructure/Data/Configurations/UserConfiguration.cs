@@ -1,5 +1,5 @@
-﻿// HealthEco.Infrastructure/Data/Configurations/UserEntityConfiguration.cs
-using HealthEco.Core.Entities;
+﻿using HealthEco.Core.Entities;
+using HealthEco.Core.Enums; // THÊM USING NÀY
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -10,6 +10,14 @@ namespace HealthEco.Infrastructure.Data.Configurations
         public void Configure(EntityTypeBuilder<User> builder)
         {
             builder.ToTable("Users");
+
+            // ⭐⭐⭐ THÊM CONVERTER CHO ROLE - QUAN TRỌNG! ⭐⭐⭐
+            builder.Property(u => u.Role)
+                .HasConversion(
+                    v => v.ToString(), // Convert enum to string when saving to DB
+                    v => (UserRole)Enum.Parse(typeof(UserRole), v) // Convert string from DB to enum
+                )
+                .HasMaxLength(50);
 
             // Thiết lập giá trị mặc định cho tất cả các cột
             builder.Property(u => u.IsEmailVerified)

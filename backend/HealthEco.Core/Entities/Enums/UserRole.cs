@@ -2,9 +2,9 @@
 {
     public enum UserRole
     {
-        Patient,
-        Doctor,
-        ClinicAdmin,
-        SystemAdmin
+        Patient = 0,      // "0" trong database
+        Doctor = 1,       // "1" trong database  
+        ClinicAdmin = 2,  // "2" trong database
+        SystemAdmin = 3   // "3" trong database
     }
 }
