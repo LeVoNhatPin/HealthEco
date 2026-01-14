@@ -24,7 +24,11 @@ namespace HealthEco.Core.DTOs.AuthDto
         // Thêm các property optional khác nếu cần
         public string? PhoneNumber { get; set; }
         public DateOnly? DateOfBirth { get; set; }
-    }
+        public string? Address { get; set; }
+        public string? City
+        {
+            get; set;
+        }
 
     public class LoginRequest
     {
