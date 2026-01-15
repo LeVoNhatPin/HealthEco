@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { authService } from '@/services/auth.service';
 import { AuthResponse, User } from '@/types/auth';
 import { ApiResponse } from '@/types/api';
+import { toast } from 'sonner';
 
 interface AuthContextType {
     user: User | null;
@@ -12,7 +13,6 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<void>;
     register: (data: any) => Promise<ApiResponse<AuthResponse>>;
     logout: () => Promise<void>;
-    // THÊM CÁC METHOD MỚI:
     updateProfile: (data: any) => Promise<ApiResponse<User>>;
     changePassword: (currentPassword: string, newPassword: string) => Promise<ApiResponse<void>>;
     refreshUser: () => Promise<void>;
@@ -61,21 +61,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
-
+    // ================= LOGIN =================
     const login = async (email: string, password: string) => {
         setIsLoading(true);
         try {
             const response = await authService.login({ email, password });
+
             if (response.success && response.data) {
                 setUser(response.data.user);
+                toast.success(response.message || 'Đăng nhập thành công');
             } else {
-                throw new Error(response.message || 'Đăng nhập thất bại');
+                toast.error(response.message || 'Đăng nhập thất bại');
+                throw new Error(response.message);
             }
+        } catch (error: any) {
+            toast.error(error?.message || 'Đăng nhập thất bại');
+            throw error;
         } finally {
             setIsLoading(false);
         }
     };
 
+    // ================= REGISTER =================
     const register = async (data: any) => {
         setIsLoading(true);
         try {
@@ -83,57 +90,82 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             if (response.success && response.data) {
                 setUser(response.data.user);
+                toast.success(response.message || 'Đăng ký thành công');
                 return response;
-            } else {
-                throw new Error(response.message || 'Đăng ký thất bại');
             }
+
+            toast.error(response.message || 'Đăng ký thất bại');
+            throw new Error(response.message);
         } catch (error: any) {
-            console.error('AuthContext register error:', error);
+            toast.error(error?.message || 'Đăng ký thất bại');
             throw error;
         } finally {
             setIsLoading(false);
         }
     };
 
+    // ================= LOGOUT =================
     const logout = async () => {
         setIsLoading(true);
         try {
             await authService.logout();
             setUser(null);
+            toast.success('Đăng xuất thành công');
+        } catch (error: any) {
+            toast.error('Đăng xuất thất bại');
+            throw error;
         } finally {
             setIsLoading(false);
         }
     };
 
-    // THÊM CÁC METHOD MỚI:
-
+    // ================= UPDATE PROFILE =================
     const updateProfile = async (data: any): Promise<ApiResponse<User>> => {
         setIsLoading(true);
         try {
             const response = await authService.updateProfile(data);
+
             if (response.success && response.data) {
                 setUser(response.data);
+                toast.success(response.message || 'Cập nhật thông tin thành công');
+            } else {
+                toast.error(response.message || 'Cập nhật thất bại');
             }
+
             return response;
         } catch (error: any) {
+            toast.error(error?.message || 'Cập nhật thông tin thất bại');
             throw error;
         } finally {
             setIsLoading(false);
         }
     };
 
-    const changePassword = async (currentPassword: string, newPassword: string): Promise<ApiResponse<void>> => {
+    // ================= CHANGE PASSWORD =================
+    const changePassword = async (
+        currentPassword: string,
+        newPassword: string
+    ): Promise<ApiResponse<void>> => {
         setIsLoading(true);
         try {
             const response = await authService.changePassword(currentPassword, newPassword);
+
+            if (response.success) {
+                toast.success(response.message || 'Đổi mật khẩu thành công');
+            } else {
+                toast.error(response.message || 'Đổi mật khẩu thất bại');
+            }
+
             return response;
         } catch (error: any) {
+            toast.error(error?.message || 'Đổi mật khẩu thất bại');
             throw error;
         } finally {
             setIsLoading(false);
         }
     };
 
+    // ================= REFRESH USER =================
     const refreshUser = async () => {
         try {
             const freshUser = await authService.refreshUser();
@@ -145,21 +177,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
-    const hasRole = (role: string): boolean => {
-        return authService.hasRole(role);
-    };
-
-    const isAdmin = (): boolean => {
-        return authService.isAdmin();
-    };
-
-    const isDoctor = (): boolean => {
-        return authService.isDoctor();
-    };
-
-    const isPatient = (): boolean => {
-        return authService.isPatient();
-    };
+    // ================= ROLE HELPERS =================
+    const hasRole = (role: string): boolean => authService.hasRole(role);
+    const isAdmin = (): boolean => authService.isAdmin();
+    const isDoctor = (): boolean => authService.isDoctor();
+    const isPatient = (): boolean => authService.isPatient();
 
     const value: AuthContextType = {
         user,
