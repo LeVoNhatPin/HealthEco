@@ -146,7 +146,7 @@ function ProfileContent() {
                                     </Button>
                                 ) : (
                                     <div className="flex gap-2">
-                                        <Button type="submit" disabled={isLoading}>
+                                        <Button onClick={handleProfileUpdate} disabled={isLoading}>
                                             {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
                                         </Button>
                                         <Button
