@@ -185,6 +185,9 @@ class AuthService {
     }
 
     async refreshUser(): Promise<User | null> {
+        const token = this.getToken();
+        if (!token) return null; // ⛔ CHẶN NGUỒN SPAM
+
         try {
             const response = await apiClient.get<ApiResponse<User>>(
                 "/api/v1/auth/me"
@@ -195,8 +198,7 @@ class AuthService {
                 return response.data.data;
             }
             return null;
-        } catch (error) {
-            console.error("Failed to refresh user:", error);
+        } catch {
             return null;
         }
     }

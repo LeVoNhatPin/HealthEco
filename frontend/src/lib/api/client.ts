@@ -16,6 +16,9 @@ const getApiUrl = () => {
     return url;
 };
 
+/**
+ * 🔹 Axios chính (có interceptor)
+ */
 const apiClient = axios.create({
     headers: {
         "Content-Type": "application/json",
@@ -23,7 +26,19 @@ const apiClient = axios.create({
 });
 
 /**
+ * 🔹 Axios RIÊNG cho refresh token (❌ KHÔNG interceptor)
+ */
+const refreshClient = axios.create({
+    baseURL: getApiUrl(),
+    headers: {
+        "Content-Type": "application/json",
+    },
+});
+
+/**
+ * =========================
  * REQUEST INTERCEPTOR
+ * =========================
  */
 apiClient.interceptors.request.use(
     (config) => {
@@ -37,6 +52,7 @@ apiClient.interceptors.request.use(
             config.url?.includes("/auth/register") ||
             config.url?.includes("/auth/refresh");
 
+        // ✅ CHỈ GẮN TOKEN KHI KHÔNG PHẢI AUTH ENDPOINT
         if (!isAuthEndpoint && typeof window !== "undefined") {
             const token = localStorage.getItem("healtheco_token");
             if (token) {
@@ -50,7 +66,9 @@ apiClient.interceptors.request.use(
 );
 
 /**
+ * =========================
  * RESPONSE INTERCEPTOR
+ * =========================
  */
 apiClient.interceptors.response.use(
     (response) => response,
@@ -59,13 +77,27 @@ apiClient.interceptors.response.use(
             return Promise.reject(error);
         }
 
+        const status = error.response?.status;
         const originalRequest = error.config;
 
+        // ❌ 403 / 405 → KHÔNG REFRESH TOKEN
+        if (status === 403 || status === 405) {
+            return Promise.reject(error);
+        }
+
+        const isAuthEndpoint =
+            originalRequest.url?.includes("/auth/login") ||
+            originalRequest.url?.includes("/auth/register") ||
+            originalRequest.url?.includes("/auth/refresh");
+
+        // ✅ CHỈ REFRESH KHI:
+        // - 401
+        // - chưa retry
+        // - không phải auth endpoint
         if (
-            error.response?.status === 401 &&
+            status === 401 &&
             !originalRequest._retry &&
-            !originalRequest.url?.includes("/auth/login") &&
-            !originalRequest.url?.includes("/auth/register")
+            !isAuthEndpoint
         ) {
             originalRequest._retry = true;
 
@@ -79,11 +111,11 @@ apiClient.interceptors.response.use(
                     throw new Error("Missing tokens");
                 }
 
-                // ✅ DÙNG CHÍNH apiClient
-                const res = await apiClient.post("/api/v1/auth/refresh", {
-                    token,
-                    refreshToken,
-                });
+                // ✅ DÙNG refreshClient (KHÔNG interceptor)
+                const res = await refreshClient.post(
+                    "/api/v1/auth/refresh",
+                    { token, refreshToken }
+                );
 
                 const newToken = res.data.data.token;
                 const newRefreshToken = res.data.data.refreshToken;
@@ -94,9 +126,13 @@ apiClient.interceptors.response.use(
                     newRefreshToken
                 );
 
-                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                // 🔁 GẮN TOKEN MỚI VÀ GỬI LẠI REQUEST CŨ
+                originalRequest.headers.Authorization =
+                    `Bearer ${newToken}`;
+
                 return apiClient(originalRequest);
             } catch (err) {
+                // ❌ REFRESH FAIL → LOGOUT CỨNG
                 localStorage.clear();
                 window.location.href = "/dang-nhap";
                 return Promise.reject(err);

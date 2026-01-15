@@ -46,14 +46,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const checkAuth = async () => {
         try {
+            const cachedUser = authService.getUser();
+            if (cachedUser) {
+                setUser(cachedUser);
+                return;
+            }
+
             const currentUser = await authService.getCurrentUser();
             setUser(currentUser);
-        } catch (error) {
+        } catch {
             setUser(null);
         } finally {
             setIsLoading(false);
         }
     };
+
 
     const login = async (email: string, password: string) => {
         setIsLoading(true);
