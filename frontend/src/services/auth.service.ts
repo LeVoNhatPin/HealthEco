@@ -132,6 +132,93 @@ class AuthService {
         }
     }
 
+    async updateProfile(data: {
+        fullName?: string;
+        phoneNumber?: string;
+        dateOfBirth?: string;
+        address?: string;
+        city?: string;
+        avatarUrl?: string;
+    }): Promise<ApiResponse<User>> {
+        try {
+            const response = await apiClient.put<ApiResponse<User>>(
+                "/api/v1/auth/me", // Hoặc "/api/v1/user/profile" nếu bạn có endpoint riêng
+                data
+            );
+
+            if (response.data.success && response.data.data) {
+                this.setUser(response.data.data);
+            }
+
+            return response.data;
+        } catch (error: any) {
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Đã có lỗi xảy ra khi cập nhật profile",
+                }
+            );
+        }
+    }
+
+    async changePassword(
+        currentPassword: string,
+        newPassword: string
+    ): Promise<ApiResponse<void>> {
+        try {
+            const response = await apiClient.put<ApiResponse<void>>(
+                "/api/v1/auth/change-password",
+                { currentPassword, newPassword }
+            );
+
+            return response.data;
+        } catch (error: any) {
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Đã có lỗi xảy ra khi đổi mật khẩu",
+                }
+            );
+        }
+    }
+
+    async refreshUser(): Promise<User | null> {
+        try {
+            const response = await apiClient.get<ApiResponse<User>>(
+                "/api/v1/auth/me"
+            );
+
+            if (response.data.success && response.data.data) {
+                this.setUser(response.data.data);
+                return response.data.data;
+            }
+            return null;
+        } catch (error) {
+            console.error("Failed to refresh user:", error);
+            return null;
+        }
+    }
+
+    hasRole(role: string): boolean {
+        const user = this.getUser();
+        return user?.role === role;
+    }
+
+    isAdmin(): boolean {
+        const user = this.getUser();
+        return user?.role === "SystemAdmin" || user?.role === "ClinicAdmin";
+    }
+
+    isDoctor(): boolean {
+        const user = this.getUser();
+        return user?.role === "Doctor";
+    }
+
+    isPatient(): boolean {
+        const user = this.getUser();
+        return user?.role === "Patient";
+    }
+
     isAuthenticated(): boolean {
         return !!this.getToken();
     }

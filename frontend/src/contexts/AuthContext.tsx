@@ -12,6 +12,14 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<void>;
     register: (data: any) => Promise<ApiResponse<AuthResponse>>;
     logout: () => Promise<void>;
+    // THÊM CÁC METHOD MỚI:
+    updateProfile: (data: any) => Promise<ApiResponse<User>>;
+    changePassword: (currentPassword: string, newPassword: string) => Promise<ApiResponse<void>>;
+    refreshUser: () => Promise<void>;
+    hasRole: (role: string) => boolean;
+    isAdmin: () => boolean;
+    isDoctor: () => boolean;
+    isPatient: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,16 +74,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             const response = await authService.register(data);
 
-            // Kiểm tra response structure
             if (response.success && response.data) {
                 setUser(response.data.user);
-                return response; // Trả về response để page xử lý
+                return response;
             } else {
                 throw new Error(response.message || 'Đăng ký thất bại');
             }
         } catch (error: any) {
             console.error('AuthContext register error:', error);
-            throw error; // Re-throw để page bắt
+            throw error;
         } finally {
             setIsLoading(false);
         }
@@ -91,6 +98,62 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
+    // THÊM CÁC METHOD MỚI:
+
+    const updateProfile = async (data: any): Promise<ApiResponse<User>> => {
+        setIsLoading(true);
+        try {
+            const response = await authService.updateProfile(data);
+            if (response.success && response.data) {
+                setUser(response.data);
+            }
+            return response;
+        } catch (error: any) {
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const changePassword = async (currentPassword: string, newPassword: string): Promise<ApiResponse<void>> => {
+        setIsLoading(true);
+        try {
+            const response = await authService.changePassword(currentPassword, newPassword);
+            return response;
+        } catch (error: any) {
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const refreshUser = async () => {
+        try {
+            const freshUser = await authService.refreshUser();
+            if (freshUser) {
+                setUser(freshUser);
+            }
+        } catch (error) {
+            console.error('Failed to refresh user:', error);
+        }
+    };
+
+    const hasRole = (role: string): boolean => {
+        return authService.hasRole(role);
+    };
+
+    const isAdmin = (): boolean => {
+        return authService.isAdmin();
+    };
+
+    const isDoctor = (): boolean => {
+        return authService.isDoctor();
+    };
+
+    const isPatient = (): boolean => {
+        return authService.isPatient();
+    };
+
     const value: AuthContextType = {
         user,
         isLoading,
@@ -98,6 +161,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         login,
         register,
         logout,
+        updateProfile,
+        changePassword,
+        refreshUser,
+        hasRole,
+        isAdmin,
+        isDoctor,
+        isPatient,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -146,7 +146,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy =>
+        policy.RequireRole("SystemAdmin", "ClinicAdmin"));
+
+    options.AddPolicy("DoctorOnly", policy =>
+        policy.RequireRole("Doctor"));
+
+    options.AddPolicy("PatientOnly", policy =>
+        policy.RequireRole("Patient"));
+
+    options.AddPolicy("ClinicStaff", policy =>
+        policy.RequireRole("Doctor", "ClinicAdmin", "Staff"));
+});
 
 #endregion
 

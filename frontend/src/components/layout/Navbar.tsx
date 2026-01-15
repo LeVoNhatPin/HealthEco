@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, User, Settings, Calendar, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export function Navbar() {
+export default function Navbar() {
     const { user, logout, isAuthenticated } = useAuth();
     const router = useRouter();
     const [isMenuOpen, setIsMenuOpen] = useState(false);

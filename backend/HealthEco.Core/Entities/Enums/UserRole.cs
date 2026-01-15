@@ -7,4 +7,4 @@
         ClinicAdmin = 2,  // "2" trong database
         SystemAdmin = 3   // "3" trong database
     }
-}
+}   

@@ -460,7 +460,8 @@ namespace HealthEco.API.Controllers
                 IsEmailVerified = user.IsEmailVerified,
                 ThemePreference = user.ThemePreference,
                 LanguagePreference = user.LanguagePreference,
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt
             };
         }
     }

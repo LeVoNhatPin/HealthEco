@@ -93,6 +93,7 @@ namespace HealthEco.Core.DTOs.Auth
         public string? ThemePreference { get; set; }
         public string? LanguagePreference { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
     }
 
     public class ActivityLogDto

@@ -1,162 +1,180 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, User, FileText, CreditCard, Star } from 'lucide-react';
+import { Calendar, Clock, User, Stethoscope, Building, Bell } from 'lucide-react';
 import Link from 'next/link';
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { user } = useAuth();
 
-  const stats = {
-    upcomingAppointments: 2,
-    pastAppointments: 5,
-    prescriptions: 3,
-    pendingPayments: 1,
-  };
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Xin chào, {user?.fullName}!</h1>
-        <p className="text-gray-600">Chào mừng trở lại với HealthEco</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Chào mừng trở lại, {user?.fullName}!
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Đây là bảng điều khiển của bạn. Quản lý tất cả thông tin sức khỏe tại đây.
+          </p>
+        </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lịch hẹn sắp tới</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.upcomingAppointments}</div>
-            <p className="text-xs text-gray-500">Tiếp theo: Ngày mai, 10:00</p>
-          </CardContent>
-        </Card>
+        {/* Role-based content */}
+        <div className="mb-8">
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-100">
+            <span className="text-blue-800 font-medium capitalize">
+              Vai trò: {user?.role}
+            </span>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lịch hẹn đã qua</CardTitle>
-            <Clock className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pastAppointments}</div>
-            <p className="text-xs text-gray-500">Gần nhất: 2 ngày trước</p>
-          </CardContent>
-        </Card>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Lịch hẹn hôm nay</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+                <Calendar className="h-10 w-10 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Đơn thuốc</CardTitle>
-            <FileText className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.prescriptions}</div>
-            <p className="text-xs text-gray-500">Đang hoạt động: 1</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Lịch hẹn sắp tới</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+                <Clock className="h-10 w-10 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Thanh toán chờ xử lý</CardTitle>
-            <CreditCard className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingPayments}</div>
-            <p className="text-xs text-gray-500">Tổng: ₫500,000</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Bác sĩ đã khám</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+                <Stethoscope className="h-10 w-10 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Thao tác nhanh</CardTitle>
-            <CardDescription>Các tính năng thường dùng</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <Button variant="outline"  className="h-auto py-4">
-                <Link href="/bac-si">
-                  <div className="text-left">
-                    <Calendar className="h-5 w-5 mb-2 text-blue-600" />
-                    <div className="font-medium">Đặt lịch</div>
-                    <p className="text-sm text-gray-500 mt-1">Tìm bác sĩ</p>
-                  </div>
-                </Link>
-              </Button>
-              
-              <Button variant="outline"  className="h-auto py-4">
-                <Link href="/bang-dieu-khien/lich-hen">
-                  <div className="text-left">
-                    <Calendar className="h-5 w-5 mb-2 text-green-600" />
-                    <div className="font-medium">Xem lịch hẹn</div>
-                    <p className="text-sm text-gray-500 mt-1">Sắp tới & đã qua</p>
-                  </div>
-                </Link>
-              </Button>
-              
-              <Button variant="outline"  className="h-auto py-4">
-                <Link href="/bang-dieu-khien/ho-so">
-                  <div className="text-left">
-                    <FileText className="h-5 w-5 mb-2 text-purple-600" />
-                    <div className="font-medium">Hồ sơ sức khỏe</div>
-                    <p className="text-sm text-gray-500 mt-1">Xem lịch sử</p>
-                  </div>
-                </Link>
-              </Button>
-              
-              <Button variant="outline"  className="h-auto py-4">
-                <Link href="/bang-dieu-khien/cai-dat">
-                  <div className="text-left">
-                    <User className="h-5 w-5 mb-2 text-orange-600" />
-                    <div className="font-medium">Cài đặt</div>
-                    <p className="text-sm text-gray-500 mt-1">Thông tin cá nhân</p>
-                  </div>
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Phòng khám đã đến</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+                <Building className="h-10 w-10 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Lịch hẹn sắp tới</CardTitle>
-            <CardDescription>Cuộc hẹn tiếp theo của bạn</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {stats.upcomingAppointments > 0 ? (
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Hành Động Nhanh</CardTitle>
+              <CardDescription>Thao tác nhanh với tài khoản của bạn</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Link href="/bang-dieu-khien/profile">
+                <Button className="w-full justify-start" variant="outline">
+                  <User className="mr-2 h-4 w-4" />
+                  Xem & Chỉnh sửa Hồ Sơ
+                </Button>
+              </Link>
+
+              <Link href="/dat-lich">
+                <Button className="w-full justify-start" variant="outline">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Đặt Lịch Khám Mới
+                </Button>
+              </Link>
+
+              <Link href="/bac-si">
+                <Button className="w-full justify-start" variant="outline">
+                  <Stethoscope className="mr-2 h-4 w-4" />
+                  Tìm Bác Sĩ
+                </Button>
+              </Link>
+
+              <Link href="/phong-kham">
+                <Button className="w-full justify-start" variant="outline">
+                  <Building className="mr-2 h-4 w-4" />
+                  Tìm Phòng Khám
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Thông Báo</CardTitle>
+              <CardDescription>Cập nhật mới nhất</CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <Bell className="h-5 w-5 text-blue-500 mt-0.5" />
                   <div>
-                    <div className="font-medium">BS. Nguyễn Văn A</div>
-                    <div className="text-sm text-gray-500">Chuyên khoa Tim mạch</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">Ngày mai, 10:00</div>
-                    <div className="text-sm text-gray-500">30 phút</div>
+                    <p className="font-medium">Chào mừng đến với HealthEco!</p>
+                    <p className="text-sm text-gray-600">Cảm ơn bạn đã đăng ký tài khoản.</p>
                   </div>
                 </div>
-                <Button variant="outline" className="w-full" >
-                  <Link href="/bang-dieu-khien/lich-hen">Xem tất cả</Link>
-                </Button>
+                <div className="flex items-start space-x-3">
+                  <Bell className="h-5 w-5 text-green-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium">Cập nhật hồ sơ của bạn</p>
+                    <p className="text-sm text-gray-600">Hãy hoàn thiện thông tin cá nhân để sử dụng đầy đủ tính năng.</p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="font-medium text-gray-900 mb-2">Không có lịch hẹn sắp tới</h3>
-                <p className="text-gray-500 mb-4">Đặt lịch hẹn đầu tiên của bạn với bác sĩ</p>
-                <Button >
-                  <Link href="/bac-si">Tìm bác sĩ</Link>
-                </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Role-specific features */}
+        {user?.role === 'SystemAdmin' && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>Quản Trị Hệ Thống</CardTitle>
+              <CardDescription>Công cụ dành cho quản trị viên</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Link href="/admin">
+                  <Button className="w-full">Truy cập Admin Dashboard</Button>
+                </Link>
+                <p className="text-sm text-gray-600">
+                  Với vai trò System Admin, bạn có quyền quản lý toàn bộ hệ thống.
+                </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
   );
 }
