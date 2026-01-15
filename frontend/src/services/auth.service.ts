@@ -113,15 +113,17 @@ class AuthService {
 
     async getCurrentUser(): Promise<User | null> {
         const token = this.getToken();
-        if (!token) return null; // ⬅️ chặn gọi API khi chưa login
+        if (!token) return null;
 
-        const user = this.getUser();
-        if (user) return user;
+        // ✅ ĐÃ CÓ USER → KHÔNG GỌI API
+        const cachedUser = this.getUser();
+        if (cachedUser) return cachedUser;
 
         try {
             const response = await apiClient.get<ApiResponse<User>>(
                 "/api/v1/auth/me"
             );
+
             if (response.data.success && response.data.data) {
                 this.setUser(response.data.data);
                 return response.data.data;
@@ -142,7 +144,7 @@ class AuthService {
     }): Promise<ApiResponse<User>> {
         try {
             const response = await apiClient.put<ApiResponse<User>>(
-                 "/api/v1/user/profile", // Hoặc "/api/v1/user/profile" nếu bạn có endpoint riêng
+                "/api/v1/user/profile", // Hoặc "/api/v1/user/profile" nếu bạn có endpoint riêng
                 data
             );
 
