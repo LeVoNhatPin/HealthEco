@@ -142,7 +142,7 @@ class AuthService {
     }): Promise<ApiResponse<User>> {
         try {
             const response = await apiClient.put<ApiResponse<User>>(
-                "/api/v1/auth/me", // Hoặc "/api/v1/user/profile" nếu bạn có endpoint riêng
+                 "/api/v1/user/profile", // Hoặc "/api/v1/user/profile" nếu bạn có endpoint riêng
                 data
             );
 
