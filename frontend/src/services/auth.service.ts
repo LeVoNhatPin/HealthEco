@@ -168,8 +168,8 @@ class AuthService {
         newPassword: string
     ): Promise<ApiResponse<void>> {
         try {
-            const response = await apiClient.put<ApiResponse<void>>(
-                "/api/v1/auth/change-password",
+            const response = await apiClient.post<ApiResponse<void>>(
+                "/api/v1/auth/change-password", // ✅ POST
                 { currentPassword, newPassword }
             );
 
