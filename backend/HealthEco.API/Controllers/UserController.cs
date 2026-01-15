@@ -71,34 +71,33 @@ namespace HealthEco.API.Controllers
         /// Cập nhật thông tin cá nhân
         /// </summary>
         [HttpPut("profile")]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request,[FromServices] IAuthService authService)
+        public async Task<IActionResult> UpdateProfile(
+    [FromBody] UpdateProfileRequest request
+)
         {
             var userId = GetUserId();
-            if (userId == 0) return Unauthorized();
+            if (userId == 0)
+                return Unauthorized(new BaseResponse { Success = false, Message = "Unauthorized" });
 
             var user = await _context.Users.FindAsync(userId);
-            if (user == null) return NotFound();
+            if (user == null)
+                return NotFound(new BaseResponse { Success = false, Message = "User not found" });
 
-            if (!string.IsNullOrWhiteSpace(request.FullName))
-                user.FullName = request.FullName;
-
-            if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-                user.PhoneNumber = request.PhoneNumber;
-
+            user.FullName = request.FullName ?? user.FullName;
+            user.PhoneNumber = request.PhoneNumber ?? user.PhoneNumber;
+            user.DateOfBirth = request.DateOfBirth ?? user.DateOfBirth;
+            user.Address = request.Address ?? user.Address;
+            user.City = request.City ?? user.City;
+            user.AvatarUrl = request.AvatarUrl ?? user.AvatarUrl;
             user.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
-            // 🔥 CẤP TOKEN MỚI
-            var token = typeof(AuthService)
-                .GetMethod("GenerateJwtToken", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .Invoke(authService, new object[] { user }) as string;
-
-            return Ok(new
+            return Ok(new DataResponse<UserDto>
             {
-                success = true,
-                message = "Cập nhật thành công",
-                data = MapToUserDto(user),
-                token // frontend update lại token
+                Success = true,
+                Message = "Cập nhật thông tin thành công",
+                Data = MapToUserDto(user)
             });
         }
 
