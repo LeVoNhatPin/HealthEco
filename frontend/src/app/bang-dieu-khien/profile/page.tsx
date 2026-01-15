@@ -191,97 +191,52 @@ function ProfileContent() {
                                     <div>
                                         <h3 className="text-xl font-semibold">{user.fullName}</h3>
                                         <p className="text-gray-600">{user.email}</p>
-                                        <div className="flex items-center mt-2">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {user.isActive ? 'Đang hoạt động' : 'Đã vô hiệu hóa'}
-                                            </span>
-                                            <span className="ml-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium capitalize">
-                                                {user.role}
-                                            </span>
-                                        </div>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="fullName" className="flex items-center gap-2">
-                                            <User className="h-4 w-4" />
-                                            Họ và tên
-                                        </Label>
-                                        <Input
-                                            id="fullName"
-                                            value={formData.fullName}
-                                            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                            disabled={!editMode}
-                                            placeholder="Nhập họ và tên"
-                                        />
-                                    </div>
+                                    <Input
+                                        value={formData.fullName}
+                                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                        disabled={!editMode}
+                                    />
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="phoneNumber" className="flex items-center gap-2">
-                                            <Phone className="h-4 w-4" />
-                                            Số điện thoại
-                                        </Label>
-                                        <Input
-                                            id="phoneNumber"
-                                            value={formData.phoneNumber}
-                                            onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                                            disabled={!editMode}
-                                            placeholder="Nhập số điện thoại"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="dateOfBirth" className="flex items-center gap-2">
-                                            <Calendar className="h-4 w-4" />
-                                            Ngày sinh
-                                        </Label>
-                                        <Input
-                                            id="dateOfBirth"
-                                            type="date"
-                                            value={formData.dateOfBirth}
-                                            onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                                            disabled={!editMode}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="city" className="flex items-center gap-2">
-                                            <Home className="h-4 w-4" />
-                                            Thành phố
-                                        </Label>
-                                        <Input
-                                            id="city"
-                                            value={formData.city}
-                                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                            disabled={!editMode}
-                                            placeholder="Nhập thành phố"
-                                        />
-                                    </div>
-
-                                    <div className="md:col-span-2 space-y-2">
-                                        <Label htmlFor="address">Địa chỉ</Label>
-                                        <Input
-                                            id="address"
-                                            value={formData.address}
-                                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                            disabled={!editMode}
-                                            placeholder="Nhập địa chỉ đầy đủ"
-                                        />
-                                    </div>
-
-                                    <div className="md:col-span-2 space-y-2">
-                                        <Label htmlFor="avatarUrl">URL Avatar</Label>
-                                        <Input
-                                            id="avatarUrl"
-                                            value={formData.avatarUrl}
-                                            onChange={(e) => setFormData({ ...formData, avatarUrl: e.target.value })}
-                                            disabled={!editMode}
-                                            placeholder="https://example.com/avatar.jpg"
-                                        />
-                                    </div>
+                                    <Input
+                                        value={formData.phoneNumber}
+                                        onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                                        disabled={!editMode}
+                                    />
                                 </div>
+
+                                {editMode && (
+                                    <div className="flex gap-2">
+                                        {/* ✅ SUBMIT ĐÚNG */}
+                                        <Button type="submit" disabled={isLoading}>
+                                            {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
+                                        </Button>
+
+                                        {/* ✅ KHÔNG SUBMIT */}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setEditMode(false);
+                                                setFormData({
+                                                    fullName: user.fullName || '',
+                                                    phoneNumber: user.phoneNumber || '',
+                                                    dateOfBirth: user.dateOfBirth || '',
+                                                    address: user.address || '',
+                                                    city: user.city || '',
+                                                    avatarUrl: user.avatarUrl || '',
+                                                });
+                                            }}
+                                        >
+                                            Hủy
+                                        </Button>
+                                    </div>
+                                )}
                             </form>
+
                         </CardContent>
                     </Card>
 
