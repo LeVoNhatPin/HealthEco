@@ -2,6 +2,7 @@
 using HealthEco.Core.DTOs.Auth;
 using HealthEco.Core.Entities;
 using HealthEco.Infrastructure.Data;
+using HealthEco.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -70,69 +71,35 @@ namespace HealthEco.API.Controllers
         /// Cập nhật thông tin cá nhân
         /// </summary>
         [HttpPut("profile")]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request,[FromServices] IAuthService authService)
         {
-            try
+            var userId = GetUserId();
+            if (userId == 0) return Unauthorized();
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return NotFound();
+
+            if (!string.IsNullOrWhiteSpace(request.FullName))
+                user.FullName = request.FullName;
+
+            if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+                user.PhoneNumber = request.PhoneNumber;
+
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            // 🔥 CẤP TOKEN MỚI
+            var token = typeof(AuthService)
+                .GetMethod("GenerateJwtToken", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                .Invoke(authService, new object[] { user }) as string;
+
+            return Ok(new
             {
-                var userId = GetUserId();
-                if (userId == 0)
-                {
-                    return Unauthorized(new BaseResponse
-                    {
-                        Success = false,
-                        Message = "Không xác định được người dùng"
-                    });
-                }
-
-                var user = await _context.Users.FindAsync(userId);
-                if (user == null)
-                {
-                    return NotFound(new BaseResponse
-                    {
-                        Success = false,
-                        Message = "Không tìm thấy người dùng"
-                    });
-                }
-
-                // Cập nhật các trường cho phép
-                if (!string.IsNullOrWhiteSpace(request.FullName))
-                    user.FullName = request.FullName;
-
-                if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-                    user.PhoneNumber = request.PhoneNumber;
-
-                if (request.DateOfBirth.HasValue)
-                    user.DateOfBirth = request.DateOfBirth.Value;
-
-                if (!string.IsNullOrWhiteSpace(request.Address))
-                    user.Address = request.Address;
-
-                if (!string.IsNullOrWhiteSpace(request.City))
-                    user.City = request.City;
-
-                if (!string.IsNullOrWhiteSpace(request.AvatarUrl))
-                    user.AvatarUrl = request.AvatarUrl;
-
-                user.UpdatedAt = DateTime.UtcNow;
-
-                await _context.SaveChangesAsync();
-
-                return Ok(new DataResponse<UserDto>
-                {
-                    Success = true,
-                    Message = "Cập nhật thông tin cá nhân thành công",
-                    Data = MapToUserDto(user)
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi cập nhật thông tin cá nhân");
-                return StatusCode(500, new BaseResponse
-                {
-                    Success = false,
-                    Message = "Đã xảy ra lỗi khi cập nhật thông tin cá nhân"
-                });
-            }
+                success = true,
+                message = "Cập nhật thành công",
+                data = MapToUserDto(user),
+                token // frontend update lại token
+            });
         }
 
         /// <summary>
@@ -189,7 +156,7 @@ namespace HealthEco.API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi đổi mật khẩu");
                 return StatusCode(500, new BaseResponse
-                {
+                {   
                     Success = false,
                     Message = "Đã xảy ra lỗi khi đổi mật khẩu"
                 });
