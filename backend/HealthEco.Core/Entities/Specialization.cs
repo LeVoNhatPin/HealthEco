@@ -1,21 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// HealthEco.Core/Entities/Specialization.cs
+using System.Collections.Generic;
 
 namespace HealthEco.Core.Entities
 {
     public class Specialization : BaseEntity
     {
-        [Required]
-        [MaxLength(100)]
-        public string Name { get; set; } = null!;
-
-        public string? Description { get; set; }
-
-        [MaxLength(500)]
-        public string? IconUrl { get; set; }
-
-        public bool IsActive { get; set; } = true;
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string IconUrl { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
 
         // Navigation properties
-        public virtual ICollection<Doctor> Doctors { get; set; } = new List<Doctor>();
+        public ICollection<Doctor> Doctors { get; set; } = new List<Doctor>();
     }
 }

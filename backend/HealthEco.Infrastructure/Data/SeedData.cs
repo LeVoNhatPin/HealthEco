@@ -16,15 +16,15 @@ namespace HealthEco.Infrastructure.Data
 
         public async Task InitializeAsync(ApplicationDbContext context)
         {
-            _logger.LogInformation("Starting database seeding...");
+            _logger.LogInformation("🚀 Starting database seeding...");
 
             try
             {
-                // Tạo admin nếu chưa có
+                // ============================
+                // 1️⃣ ADMIN USER
+                // ============================
                 if (!await context.Users.AnyAsync(u => u.Email == "admin@healtheco.com"))
                 {
-                    _logger.LogInformation("Creating admin user...");
-
                     var admin = new User
                     {
                         Email = "admin@healtheco.com",
@@ -40,14 +40,67 @@ namespace HealthEco.Infrastructure.Data
                     };
 
                     await context.Users.AddAsync(admin);
-                    _logger.LogInformation("✅ Admin user created: {Email}", admin.Email);
+                    _logger.LogInformation("✅ Admin user created");
                 }
 
-                // Tạo test patient
+                // ============================
+                // 2️⃣ SPECIALIZATIONS
+                // ============================
+                if (!await context.Specializations.AnyAsync())
+                {
+                    _logger.LogInformation("📌 Seeding specializations...");
+
+                    var specializations = new List<Specialization>
+                    {
+                        new()
+                        {
+                            Name = "Bác sĩ đa khoa",
+                            Description = "Khám và điều trị các bệnh thông thường",
+                            IconUrl = "/icons/general.png",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        },
+                        new()
+                        {
+                            Name = "Tim mạch",
+                            Description = "Chuyên khoa tim mạch",
+                            IconUrl = "/icons/cardiology.png",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        },
+                        new()
+                        {
+                            Name = "Da liễu",
+                            Description = "Chuyên khoa da",
+                            IconUrl = "/icons/dermatology.png",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        },
+                        new()
+                        {
+                            Name = "Nhi khoa",
+                            Description = "Chuyên khoa nhi",
+                            IconUrl = "/icons/pediatrics.png",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        }
+                    };
+
+                    await context.Specializations.AddRangeAsync(specializations);
+                    _logger.LogInformation("✅ Specializations seeded");
+                }
+
+                await context.SaveChangesAsync();
+
+                // ============================
+                // 3️⃣ TEST PATIENT
+                // ============================
                 if (!await context.Users.AnyAsync(u => u.Email == "patient@test.com"))
                 {
-                    _logger.LogInformation("Creating test patient...");
-
                     var patient = new User
                     {
                         Email = "patient@test.com",
@@ -55,6 +108,7 @@ namespace HealthEco.Infrastructure.Data
                         FullName = "Test Patient",
                         Role = UserRole.Patient,
                         PhoneNumber = "0911111111",
+                        City = "Hà Nội",
                         IsActive = true,
                         IsEmailVerified = true,
                         EmailVerifiedAt = DateTime.UtcNow,
@@ -63,21 +117,22 @@ namespace HealthEco.Infrastructure.Data
                     };
 
                     await context.Users.AddAsync(patient);
-                    _logger.LogInformation("✅ Test patient created: {Email}", patient.Email);
+                    _logger.LogInformation("✅ Test patient created");
                 }
 
-                // Tạo test doctor
+                // ============================
+                // 4️⃣ TEST DOCTOR USER
+                // ============================
                 if (!await context.Users.AnyAsync(u => u.Email == "doctor@test.com"))
                 {
-                    _logger.LogInformation("Creating test doctor...");
-
-                    var doctor = new User
+                    var doctorUser = new User
                     {
                         Email = "doctor@test.com",
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("Doctor123!"),
-                        FullName = "Test Doctor",
+                        FullName = "Bác sĩ Nguyễn Văn A",
                         Role = UserRole.Doctor,
                         PhoneNumber = "0922222222",
+                        City = "Hà Nội",
                         IsActive = true,
                         IsEmailVerified = true,
                         EmailVerifiedAt = DateTime.UtcNow,
@@ -85,16 +140,46 @@ namespace HealthEco.Infrastructure.Data
                         UpdatedAt = DateTime.UtcNow
                     };
 
-                    await context.Users.AddAsync(doctor);
-                    _logger.LogInformation("✅ Test doctor created: {Email}", doctor.Email);
+                    await context.Users.AddAsync(doctorUser);
+                    await context.SaveChangesAsync();
+
+                    _logger.LogInformation("✅ Doctor user created");
+
+                    // ============================
+                    // 5️⃣ DOCTOR PROFILE
+                    // ============================
+                    var specialization = await context.Specializations.FirstAsync();
+
+                    if (!await context.Doctors.AnyAsync(d => d.UserId == doctorUser.Id))
+                    {
+                        var doctorProfile = new Doctor
+                        {
+                            UserId = doctorUser.Id,
+                            MedicalLicense = "BS-TEST-001",
+                            LicenseImageUrl = "/licenses/doctor-test.png",
+                            SpecializationId = specialization.Id,
+                            YearsExperience = 8,
+                            Qualifications = "Bác sĩ CKI - Đại học Y Hà Nội",
+                            Bio = "Bác sĩ có nhiều năm kinh nghiệm khám và điều trị",
+                            ConsultationFee = 300000,
+                            Rating = 4.8m,
+                            TotalReviews = 120,
+                            IsVerified = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+
+                        await context.Doctors.AddAsync(doctorProfile);
+                        _logger.LogInformation("✅ Doctor profile created");
+                    }
                 }
 
                 await context.SaveChangesAsync();
-                _logger.LogInformation("✅ Database seeding completed successfully!");
+                _logger.LogInformation("🎉 Database seeding completed successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error seeding database");
+                _logger.LogError(ex, "❌ Error during database seeding");
                 throw;
             }
         }

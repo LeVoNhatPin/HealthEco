@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// HealthEco.API/Controllers/BaseController.cs
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace HealthEco.API.Controllers
 {
     [ApiController]
-    public class BaseController : ControllerBase
+    public abstract class BaseController : ControllerBase
     {
         protected readonly ILogger<BaseController> _logger;
 
@@ -12,6 +14,8 @@ namespace HealthEco.API.Controllers
         {
             _logger = logger;
         }
+
+        protected ILogger<BaseController> Logger => _logger;
 
         protected int GetUserId()
         {

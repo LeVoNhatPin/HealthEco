@@ -1,4 +1,6 @@
-﻿using HealthEco.Core.Enums;
+﻿// 4. Sửa User
+// HealthEco.Core/Entities/User.cs - CẬP NHẬT
+using HealthEco.Core.Enums;
 
 namespace HealthEco.Core.Entities
 {
@@ -32,14 +34,7 @@ namespace HealthEco.Core.Entities
         // Status
         public bool IsActive { get; set; } = true;
 
-        // Navigation properties (tạm thời comment để fix lỗi)
+        // Navigation properties
         public virtual Doctor? Doctor { get; set; }
-
-        // Các navigation properties khác tạm thời bỏ qua
-        // public virtual ICollection<Appointment> AppointmentsAsPatient { get; set; } = new List<Appointment>();
-        // public virtual ICollection<Appointment> AppointmentsAsDoctor { get; set; } = new List<Appointment>();
-        // public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
-        // public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
-        // public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
     }
 }

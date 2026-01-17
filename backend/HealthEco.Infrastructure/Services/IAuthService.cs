@@ -22,5 +22,8 @@ namespace HealthEco.Infrastructure.Services
         Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
 
         Task<IEnumerable<ActivityLog>> GetUserActivityLogsAsync(int userId, int days = 30);
+
+        string GenerateJwtToken(User user);
+        string HashPassword(string password);
     }
 }

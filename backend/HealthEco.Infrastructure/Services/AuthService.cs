@@ -1,4 +1,5 @@
-﻿using HealthEco.Core.Configuration;
+﻿// HealthEco.Infrastructure/Services/AuthService.cs
+using HealthEco.Core.Configuration;
 using HealthEco.Core.Entities;
 using HealthEco.Core.Enums;
 using HealthEco.Infrastructure.Data;
@@ -17,7 +18,7 @@ namespace HealthEco.Infrastructure.Services
     public class AuthService : IAuthService
     {
         private readonly ApplicationDbContext _context;
-        private readonly JwtSettings _jwt;
+        private readonly JwtSettings _jwtSettings;
         private readonly IDistributedCache _cache;
         private readonly ILogger<AuthService> _logger;
 
@@ -28,9 +29,39 @@ namespace HealthEco.Infrastructure.Services
             ILogger<AuthService> logger)
         {
             _context = context;
-            _jwt = jwtOptions.Value;
+            _jwtSettings = jwtOptions.Value;
             _cache = cache;
             _logger = logger;
+        }
+
+        // ========================= PUBLIC METHODS =========================
+
+        public string GenerateJwtToken(User user)
+        {
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, user.FullName ?? ""),
+                new Claim(ClaimTypes.Role, user.Role.ToString())
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: _jwtSettings.Issuer,
+                audience: _jwtSettings.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
+                signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public string HashPassword(string password)
+        {
+            return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
         // ========================= REGISTER =========================
@@ -39,11 +70,8 @@ namespace HealthEco.Infrastructure.Services
             if (await _context.Users.AnyAsync(x => x.Email == user.Email))
                 throw new AuthException("Email đã tồn tại");
 
-            if (!IsPasswordValid(password))
-                throw new AuthException("Mật khẩu không đủ mạnh");
-
             user.Email = user.Email.ToLower().Trim();
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            user.PasswordHash = HashPassword(password);
             user.IsEmailVerified = true;
             user.IsActive = true;
             user.CreatedAt = DateTime.UtcNow;
@@ -66,15 +94,12 @@ namespace HealthEco.Infrastructure.Services
         }
 
         // ========================= LOGIN =========================
-
-
         public async Task<(User user, string token, string refreshToken)> LoginAsync(string email, string password)
         {
             try
             {
                 _logger.LogInformation($"Login attempt for email: {email}");
 
-                // SỬA: XÓA AsNoTracking()
                 var user = await _context.Users
                     .FirstOrDefaultAsync(x => x.Email == email);
 
@@ -84,46 +109,29 @@ namespace HealthEco.Infrastructure.Services
                     throw new AuthException("Email hoặc mật khẩu không đúng");
                 }
 
-                // KIỂM TRA PASSWORD HASH
                 if (string.IsNullOrEmpty(user.PasswordHash))
                 {
                     _logger.LogError($"User {user.Id} has null or empty PasswordHash");
                     throw new AuthException("Tài khoản không hợp lệ. Vui lòng reset mật khẩu.");
                 }
 
-                // KIỂM TRA FORMAT PASSWORD HASH
                 bool isBcryptHash = user.PasswordHash.StartsWith("$2a$") ||
                                     user.PasswordHash.StartsWith("$2b$") ||
                                     user.PasswordHash.StartsWith("$2y$");
 
                 if (!isBcryptHash)
                 {
-                    _logger.LogError($"User {user.Id} has non-BCrypt password hash");
-
-                    // TẠO USER MỚI ĐỂ UPDATE
                     var userToUpdate = await _context.Users.FindAsync(user.Id);
                     if (userToUpdate != null)
                     {
-                        userToUpdate.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+                        userToUpdate.PasswordHash = HashPassword(password);
                         await _context.SaveChangesAsync();
                         _logger.LogInformation($"Converted password hash to BCrypt for user {user.Id}");
-
-                        // CẬP NHẬT BIẾN USER LOCAL
                         user.PasswordHash = userToUpdate.PasswordHash;
                     }
                 }
 
-                // VERIFY PASSWORD
-                bool passwordValid;
-                try
-                {
-                    passwordValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"BCrypt verification failed for user {user.Id}");
-                    throw new AuthException("Lỗi xác thực mật khẩu");
-                }
+                bool passwordValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
 
                 if (!passwordValid)
                 {
@@ -137,13 +145,6 @@ namespace HealthEco.Infrastructure.Services
                     throw new AuthException("Tài khoản bị khóa");
                 }
 
-                if (!user.IsEmailVerified)
-                {
-                    _logger.LogWarning($"Email not verified: {email}");
-                    throw new AuthException("Email chưa xác thực");
-                }
-
-                // TẠO TOKEN
                 var token = GenerateJwtToken(user);
                 var refreshToken = GenerateRefreshToken();
                 await StoreRefreshToken(user.Id, refreshToken);
@@ -160,13 +161,19 @@ namespace HealthEco.Infrastructure.Services
                 throw;
             }
         }
+
         // ========================= REFRESH TOKEN =========================
         public async Task<(User user, string token, string refreshToken)> RefreshTokenAsync(string token, string refreshToken)
         {
             var principal = GetPrincipalFromExpiredToken(token);
-            var userId = int.Parse(principal.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+            if (string.IsNullOrEmpty(userIdClaim))
+                throw new AuthException("Token không hợp lệ");
+
+            var userId = int.Parse(userIdClaim);
             var cached = await _cache.GetStringAsync($"refresh_token_{userId}");
+
             if (cached != refreshToken)
                 throw new AuthException("Refresh token không hợp lệ");
 
@@ -185,7 +192,7 @@ namespace HealthEco.Infrastructure.Services
             return (user, newToken, newRefresh);
         }
 
-        // ========================= LOGOUT =========================
+        // ========================= OTHER METHODS =========================
         public async Task<bool> LogoutAsync(int userId)
         {
             await _cache.RemoveAsync($"refresh_token_{userId}");
@@ -193,7 +200,6 @@ namespace HealthEco.Infrastructure.Services
             return true;
         }
 
-        // ========================= EMAIL =========================
         public async Task<User?> GetUserByEmailAsync(string email)
             => await _context.Users.FirstOrDefaultAsync(x => x.Email == email);
 
@@ -219,7 +225,6 @@ namespace HealthEco.Infrastructure.Services
             return user.EmailVerificationToken;
         }
 
-        // ========================= PASSWORD =========================
         public async Task<string> GeneratePasswordResetTokenAsync(string email)
         {
             var user = await GetUserByEmailAsync(email);
@@ -239,7 +244,7 @@ namespace HealthEco.Infrastructure.Services
 
             if (user == null) throw new AuthException("Token không hợp lệ");
 
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.PasswordHash = HashPassword(newPassword);
             user.ResetPasswordToken = null;
             user.ResetPasswordExpires = null;
             await _context.SaveChangesAsync();
@@ -255,13 +260,12 @@ namespace HealthEco.Infrastructure.Services
             if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
                 throw new AuthException("Mật khẩu hiện tại sai");
 
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.PasswordHash = HashPassword(newPassword);
             await _context.SaveChangesAsync();
 
             return true;
         }
 
-        // ========================= ACTIVITY LOG =========================
         public async Task<IEnumerable<ActivityLog>> GetUserActivityLogsAsync(int userId, int days = 30)
         {
             var from = DateTime.UtcNow.AddDays(-days);
@@ -271,39 +275,7 @@ namespace HealthEco.Infrastructure.Services
                 .ToListAsync();
         }
 
-        // ========================= TOKEN CORE =========================
-        private string GenerateJwtToken(User user)
-        {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Secret));
-
-            var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Email, user.Email),
-        new Claim(ClaimTypes.Name, user.FullName ?? ""),
-        new Claim(ClaimTypes.Role, user.Role.ToString()) // Đây là enum UserRole
-    };
-
-            // THÊM LOG để debug
-            _logger.LogInformation($"Generating JWT for user: {user.Email}, Role: {user.Role}");
-
-            // Xóa phần doctor claims nếu không cần thiết cho patient
-            // if (user.Role == UserRole.Doctor && user.Doctor != null)
-            // {
-            //     claims.Add(new Claim("doctorVerified", user.Doctor.IsVerified.ToString()));
-            //     claims.Add(new Claim("doctorLicense", user.Doctor.MedicalLicense));
-            // }
-
-            var token = new JwtSecurityToken(
-                issuer: _jwt.Issuer,
-                audience: _jwt.Audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_jwt.AccessTokenExpirationMinutes),
-                signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
+        // ========================= PRIVATE METHODS =========================
         private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
         {
             var parameters = new TokenValidationParameters
@@ -311,7 +283,7 @@ namespace HealthEco.Infrastructure.Services
                 ValidateAudience = false,
                 ValidateIssuer = false,
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Secret)),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret)),
                 ValidateLifetime = false
             };
 
@@ -328,7 +300,7 @@ namespace HealthEco.Infrastructure.Services
                 refreshToken,
                 new DistributedCacheEntryOptions
                 {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(_jwt.RefreshTokenExpirationDays)
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(_jwtSettings.RefreshTokenExpirationDays)
                 });
         }
 
@@ -343,11 +315,6 @@ namespace HealthEco.Infrastructure.Services
             });
             await _context.SaveChangesAsync();
         }
-
-        private bool IsPasswordValid(string password)
-            => System.Text.RegularExpressions.Regex.IsMatch(
-                password,
-                @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$");
 
         private string GenerateSecureToken()
             => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
