@@ -79,3 +79,45 @@ export interface DoctorSearchParams {
     sortBy?: string;
     sortDescending?: boolean;
 }
+export interface SpecializationResponse {
+    id: number;
+    name: string;
+    description: string;
+    iconUrl: string;
+    isActive: boolean;
+}
+export interface DoctorResponse {
+    id: number;
+    userId: number;
+    medicalLicense: string;
+    licenseImageUrl?: string;
+    specializationId?: number;
+    specialization?: SpecializationResponse;
+    yearsExperience: number;
+    qualifications: string;
+    bio?: string;
+    consultationFee: number;
+    rating: number;
+    totalReviews: number;
+    isVerified: boolean;
+    createdAt: string;
+    updatedAt: string;
+    user: UserResponse;
+}
+export interface UserResponse {
+    id: number;
+    email: string;
+    fullName: string;
+    role: string;
+    phoneNumber?: string;
+    dateOfBirth?: string;
+    address?: string;
+    city?: string;
+    avatarUrl?: string;
+    isActive: boolean;
+    isEmailVerified: boolean;
+    themePreference?: string;
+    languagePreference?: string;
+    createdAt: string;
+    updatedAt?: string;
+}

@@ -1,45 +1,49 @@
-// frontend/src/services/doctor.service.ts
-import api from "@/lib/api/client";
+// services/doctor.service.ts - THÊM TRƯỜNG dateOfBirth
 import {
-    Doctor,
     DoctorRegisterRequest,
-    DoctorUpdateRequest,
-    DoctorSearchParams,
+    DoctorResponse,
+    SpecializationResponse,
 } from "@/types/doctor";
 
 export const doctorService = {
     register: async (data: DoctorRegisterRequest) => {
-        const response = await api.post("/doctors/register", data);
-        return response.data;
+        // Convert date format if needed
+        const payload = {
+            ...data,
+            phoneNumber: data.phoneNumber || undefined,
+            dateOfBirth: data.dateOfBirth
+                ? new Date(data.dateOfBirth).toISOString()
+                : undefined,
+            address: data.address || undefined,
+            city: data.city || undefined,
+            licenseImageUrl: data.licenseImageUrl || undefined,
+            bio: data.bio || undefined,
+        };
+
+        const response = await fetch("/api/doctors/register", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+
+        return response.json();
     },
 
-    getDoctors: async (params?: DoctorSearchParams) => {
-        const response = await api.get("/doctors", { params });
-        return response.data;
+    getDoctors: async (params?: any) => {
+        const queryParams = new URLSearchParams(params).toString();
+        const response = await fetch(`/api/doctors?${queryParams}`);
+        return response.json();
     },
 
     getDoctor: async (id: number) => {
-        const response = await api.get(`/doctors/${id}`);
-        return response.data;
-    },
-
-    updateDoctor: async (id: number, data: DoctorUpdateRequest) => {
-        const response = await api.put(`/doctors/${id}`, data);
-        return response.data;
-    },
-
-    verifyDoctor: async (id: number, isVerified: boolean) => {
-        const response = await api.put(`/doctors/${id}/verify`, { isVerified });
-        return response.data;
-    },
-
-    getPendingDoctors: async () => {
-        const response = await api.get("/doctors/pending");
-        return response.data;
+        const response = await fetch(`/api/doctors/${id}`);
+        return response.json();
     },
 
     getSpecializations: async () => {
-        const response = await api.get("/specializations");
-        return response.data;
+        const response = await fetch("/api/specializations");
+        return response.json();
     },
 };
