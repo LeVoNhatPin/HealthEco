@@ -210,6 +210,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
+    
+
     // ================= ROLE HELPERS =================
     const hasRole = (role: string): boolean => {
         if (!user) return false;
