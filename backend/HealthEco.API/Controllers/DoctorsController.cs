@@ -77,7 +77,11 @@ namespace HealthEco.API.Controllers
                         YearsExperience = request.YearsExperience,
                         Qualifications = request.Qualifications,
                         Bio = request.Bio,
-                        ConsultationFee = request.ConsultationFee
+                        ConsultationFee = request.ConsultationFee,
+
+                        Rating = 0,
+                        TotalReviews = 0,
+                        IsVerified = false
                     };
 
                     _context.Doctors.Add(doctor);
