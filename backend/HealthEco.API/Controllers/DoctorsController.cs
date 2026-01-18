@@ -35,91 +35,61 @@ namespace HealthEco.API.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] DoctorRegisterRequest request)
+        public async Task<IActionResult> Register(DoctorRegisterRequest request)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
-                var existingUser = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Email == request.Email);
+                if (await _context.Users.AnyAsync(x => x.Email == request.Email))
+                    return BadRequest("Email đã tồn tại");
 
-                if (existingUser != null)
-                {
-                    return BadRequest(new { message = "Email đã được đăng ký" });
-                }
+                if (await _context.Doctors.AnyAsync(x => x.MedicalLicense == request.MedicalLicense))
+                    return BadRequest("Giấy phép hành nghề đã tồn tại");
 
-                var existingLicense = await _context.Doctors
-                    .FirstOrDefaultAsync(d => d.MedicalLicense == request.MedicalLicense);
-
-                if (existingLicense != null)
-                {
-                    return BadRequest(new { message = "Số giấy phép hành nghề đã tồn tại" });
-                }
-
-                // Tạo user mới
                 var user = new User
                 {
                     Email = request.Email,
                     PasswordHash = _authService.HashPassword(request.Password),
                     FullName = request.FullName,
                     PhoneNumber = request.PhoneNumber,
-                    DateOfBirth = request.DateOfBirth.HasValue ?
-                        DateOnly.FromDateTime(request.DateOfBirth.Value) : (DateOnly?)null,
-                    Address = request.Address ?? string.Empty,
-                    City = request.City ?? string.Empty,
-                    Role = UserRole.Doctor,
-                    IsActive = true
+                    DateOfBirth = request.DateOfBirth.HasValue
+                        ? DateOnly.FromDateTime(request.DateOfBirth.Value)
+                        : null,
+                    Address = request.Address,
+                    City = request.City,
+                    Role = UserRole.Doctor
                 };
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                // Tạo doctor profile
                 var doctor = new Doctor
                 {
                     UserId = user.Id,
                     MedicalLicense = request.MedicalLicense,
-                    LicenseImageUrl = request.LicenseImageUrl ?? string.Empty,
+                    LicenseImageUrl = request.LicenseImageUrl,
                     SpecializationId = request.SpecializationId,
                     YearsExperience = request.YearsExperience,
-                    Qualifications = request.Qualifications ?? string.Empty,
-                    Bio = request.Bio ?? string.Empty,
-                    ConsultationFee = request.ConsultationFee,
-                    Rating = 0,
-                    TotalReviews = 0,
-                    IsVerified = false
+                    Qualifications = request.Qualifications,
+                    Bio = request.Bio,
+                    ConsultationFee = request.ConsultationFee
                 };
 
                 _context.Doctors.Add(doctor);
                 await _context.SaveChangesAsync();
 
-                var token = _authService.GenerateJwtToken(user);
+                await transaction.CommitAsync();
 
                 return Ok(new
                 {
-                    success = true,
-                    message = "Đăng ký bác sĩ thành công. Vui lòng chờ xác minh từ quản trị viên.",
-                    token,
-                    user = new
-                    {
-                        user.Id,
-                        user.Email,
-                        user.FullName,
-                        user.Role,
-                        user.PhoneNumber,
-                        user.City
-                    },
-                    doctor = new
-                    {
-                        doctor.Id,
-                        doctor.MedicalLicense,
-                        doctor.IsVerified
-                    }
+                    message = "Đăng ký bác sĩ thành công, chờ xác minh"
                 });
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError(ex, "Error in doctor registration");
-                return StatusCode(500, new { message = $"Lỗi server: {ex.Message}" });
+                await transaction.RollbackAsync();
+                throw;
             }
         }
 
@@ -385,37 +355,26 @@ namespace HealthEco.API.Controllers
             }
         }
 
+        public class VerifyDoctorRequest
+        {
+            public bool IsVerified { get; set; }
+        }
+
         [HttpPut("{id}/verify")]
         [Authorize(Roles = "SystemAdmin")]
-        public async Task<IActionResult> VerifyDoctor(int id, [FromBody] bool isVerified)
+        public async Task<IActionResult> VerifyDoctor(int id, VerifyDoctorRequest request)
         {
-            try
-            {
-                var doctor = await _context.Doctors.FindAsync(id);
+            var doctor = await _context.Doctors.FindAsync(id);
+            if (doctor == null) return NotFound();
 
-                if (doctor == null)
-                {
-                    return NotFound(new { message = "Không tìm thấy bác sĩ" });
-                }
+            doctor.IsVerified = request.IsVerified;
+            doctor.UpdatedAt = DateTime.UtcNow;
 
-                doctor.IsVerified = isVerified;
-                doctor.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
 
-                _context.Doctors.Update(doctor);
-                await _context.SaveChangesAsync();
-
-                var message = isVerified
-                    ? "Đã xác minh bác sĩ thành công"
-                    : "Đã hủy xác minh bác sĩ";
-
-                return Ok(new { success = true, message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error verifying doctor with id {id}");
-                return StatusCode(500, new { message = $"Lỗi server: {ex.Message}" });
-            }
+            return Ok("Cập nhật trạng thái xác minh thành công");
         }
+
 
         [HttpGet("pending")]
         [Authorize(Roles = "SystemAdmin")]

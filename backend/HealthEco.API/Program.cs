@@ -1,11 +1,13 @@
-﻿using System.Text;
-using HealthEco.Core.Configuration;
+﻿using HealthEco.Core.Configuration;
 using HealthEco.Infrastructure.Data;
 using HealthEco.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +18,7 @@ var environment = builder.Environment;
 
 #endregion
 
-#region CORS (FIXED – SINGLE POLICY)
+#region CORS (IMPROVED)
 
 builder.Services.AddCors(options =>
 {
@@ -25,11 +27,14 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins(
                 "http://localhost:3000",
-                "https://health-eco.vercel.app"
+                "https://localhost:3000",
+                "https://health-eco.vercel.app",
+                "https://*.vercel.app"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowCredentials()
+            .SetPreflightMaxAge(TimeSpan.FromSeconds(86400));
     });
 });
 
@@ -37,9 +42,28 @@ builder.Services.AddCors(options =>
 
 #region SERVICES
 
-builder.Services.AddControllers();
+// Thêm HttpContextAccessor
+builder.Services.AddHttpContextAccessor();
+
+// Thêm Memory Cache
+builder.Services.AddMemoryCache();
+
+// Cấu hình Controllers với JSON options
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+
+        // Xử lý DateOnly
+        options.JsonSerializerOptions.Converters.Add(new DateOnlyJsonConverter());
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 
+// Cấu hình logging
 builder.Services.AddLogging(logging =>
 {
     logging.ClearProviders();
@@ -50,22 +74,29 @@ builder.Services.AddLogging(logging =>
 
 #endregion
 
-#region SWAGGER
+#region SWAGGER (IMPROVED)
 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "HealthEco API",
-        Version = "v1"
+        Version = "v1",
+        Description = "API for HealthEco Platform",
+        Contact = new OpenApiContact
+        {
+            Name = "HealthEco Team",
+            Email = "support@healtheco.com"
+        }
     });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Bearer {token}",
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -77,75 +108,95 @@ builder.Services.AddSwaggerGen(c =>
                 {
                     Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
-                }
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header
             },
-            Array.Empty<string>()
+            new List<string>()
         }
     });
+
+    // Thêm hỗ trợ cho DateOnly
+    c.MapType<DateOnly>(() => new OpenApiSchema
+    {
+        Type = "string",
+        Format = "date"
+    });
+
+    // Include XML comments (nếu có)
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
 });
 
 #endregion
 
-#region JWT AUTH
+#region JWT AUTH (FIXED)
 
 builder.Services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
 var jwtSettings = configuration.GetSection("JwtSettings");
 
-// THÊM log để debug JWT settings
-var logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<Program>();
-
+// Lấy secret key
 var jwtSecret = jwtSettings["Secret"];
 if (string.IsNullOrEmpty(jwtSecret))
 {
-    logger.LogError("JWT Secret is missing! Check appsettings.json");
-    throw new InvalidOperationException("JWT Secret is missing");
+    throw new InvalidOperationException("JWT Secret is missing! Check appsettings.json or environment variables.");
 }
-else
+
+// Cấu hình Authentication
+builder.Services.AddAuthentication(options =>
 {
-    logger.LogInformation($"JWT Secret loaded. Length: {jwtSecret.Length}");
-    logger.LogInformation($"JWT Issuer: {jwtSettings["Issuer"]}");
-    logger.LogInformation($"JWT Audience: {jwtSettings["Audience"]}");
-}
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = environment.IsProduction();
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.RequireHttpsMetadata = false; // Đổi thành false cho development
-        options.SaveToken = true;
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"] ?? "HealthEco.API",
+        ValidAudience = jwtSettings["Audience"] ?? "HealthEco.Client",
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtSecret)
+        ),
+        ClockSkew = TimeSpan.Zero
+    };
 
-        // THÊM logging cho JWT
-        options.Events = new JwtBearerEvents
+    // Logging events
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
         {
-            OnAuthenticationFailed = context =>
-            {
-                logger.LogError($"Authentication failed: {context.Exception.Message}");
-                return Task.CompletedTask;
-            },
-            OnTokenValidated = context =>
-            {
-                logger.LogInformation("Token validated successfully");
-                return Task.CompletedTask;
-            }
-        };
-
-        options.TokenValidationParameters = new TokenValidationParameters
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError($"Authentication failed: {context.Exception.Message}");
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogInformation("Token validated successfully");
+            return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning($"Authentication challenge: {context.Error}");
+            return Task.CompletedTask;
+        }
+    };
+});
 
-            ValidIssuer = jwtSettings["Issuer"],
-            ValidAudience = jwtSettings["Audience"],
-
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtSecret)
-            ),
-
-            ClockSkew = TimeSpan.Zero // Không có độ trễ
-        };
-    });
-
+// Cấu hình Authorization
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
@@ -159,6 +210,10 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy("ClinicStaff", policy =>
         policy.RequireRole("Doctor", "ClinicAdmin", "Staff"));
+
+    options.AddPolicy("VerifiedDoctor", policy =>
+        policy.RequireRole("Doctor")
+              .RequireClaim("IsVerified", "true"));
 });
 
 #endregion
@@ -167,12 +222,13 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IDoctorService, DoctorService>(); // Thêm nếu có
 builder.Services.AddTransient<SeedData>();
 builder.Services.AddDistributedMemoryCache();
 
 #endregion
 
-#region DATABASE (RAILWAY POSTGRES – FIXED)
+#region DATABASE (RAILWAY POSTGRES – IMPROVED)
 
 string connectionString;
 
@@ -181,17 +237,23 @@ var defaultConn = configuration.GetConnectionString("DefaultConnection");
 
 if (!string.IsNullOrEmpty(railwayDbUrl))
 {
-    var uri = new Uri(railwayDbUrl.Replace("postgres://", "postgresql://"));
+    // Parse Railway PostgreSQL URL
+    var uri = new Uri(railwayDbUrl);
     var userInfo = uri.UserInfo.Split(':');
 
-    connectionString =
-        $"Host={uri.Host};" +
-        $"Port={(uri.Port > 0 ? uri.Port : 5432)};" +
-        $"Database={uri.LocalPath.TrimStart('/')};" +
-        $"Username={userInfo[0]};" +
-        $"Password={userInfo[1]};" +
-        $"SSL Mode=Require;" +
-        $"Trust Server Certificate=true;";
+    connectionString = new Npgsql.NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.Port > 0 ? uri.Port : 5432,
+        Database = uri.AbsolutePath.TrimStart('/'),
+        Username = userInfo[0],
+        Password = userInfo[1],
+        SslMode = Npgsql.SslMode.Require,
+        TrustServerCertificate = true,
+        Pooling = true,
+        MaxPoolSize = 100,
+        ConnectionIdleLifetime = 300
+    }.ConnectionString;
 }
 else if (!string.IsNullOrEmpty(defaultConn))
 {
@@ -199,47 +261,81 @@ else if (!string.IsNullOrEmpty(defaultConn))
 }
 else
 {
-    throw new Exception("❌ No database connection string found.");
+    throw new Exception("❌ No database connection string found. Check DATABASE_URL or ConnectionStrings:DefaultConnection");
 }
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
 {
-    options.UseNpgsql(connectionString, npgsql =>
+    options.UseNpgsql(connectionString, npgsqlOptions =>
     {
-        npgsql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(30), null);
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorCodesToAdd: null);
+
+        npgsqlOptions.MigrationsAssembly("HealthEco.Infrastructure");
     });
 
     if (environment.IsDevelopment())
     {
         options.EnableDetailedErrors();
         options.EnableSensitiveDataLogging();
+        options.LogTo(Console.WriteLine, LogLevel.Information);
     }
 });
 
 #endregion
 
+#region HEALTH CHECKS
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("Database")
+    .AddUrlGroup(new Uri("http://localhost:5000/api/health"), "API Health");
+
+#endregion
+
 var app = builder.Build();
 
-#region MIDDLEWARE (ORDER IS IMPORTANT)
+#region MIDDLEWARE (CORRECT ORDER)
+
+// Exception handling đầu tiên
+app.UseExceptionHandler("/error");
 
 if (environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "HealthEco API V1");
+        c.RoutePrefix = "swagger";
+        c.DisplayRequestDuration();
+        c.EnableDeepLinking();
+        c.EnableTryItOutByDefault();
+    });
 }
-
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+else
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "HealthEco API V1");
-});
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
 
+// CORS phải ở sau UseHttpsRedirection và trước UseAuthentication
 app.UseCors("AllowFrontend");
 
+// Static files (nếu cần)
+app.UseStaticFiles();
+
+// Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Health check endpoint
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/health");
+
+// Controllers
 app.MapControllers();
 
 #endregion
@@ -248,29 +344,31 @@ app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var seeder = scope.ServiceProvider.GetRequiredService<SeedData>();
-    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    var seeder = services.GetRequiredService<SeedData>();
 
     try
     {
-        migrationLogger.LogInformation("🔄 Applying migrations...");
+        logger.LogInformation("🔄 Applying database migrations...");
         await context.Database.MigrateAsync();
 
-        migrationLogger.LogInformation("🌱 Seeding data...");
+        logger.LogInformation("🌱 Seeding database...");
         await seeder.InitializeAsync(context);
 
-        migrationLogger.LogInformation("✅ Database ready");
+        logger.LogInformation("✅ Database initialization completed");
     }
     catch (Exception ex)
     {
-        migrationLogger.LogError(ex, "❌ Database init failed");
+        logger.LogError(ex, "❌ Database initialization failed");
+        throw;
     }
 }
 
 #endregion
 
-#region GLOBAL EXCEPTION HANDLING
+#region GLOBAL EXCEPTION HANDLING (ENHANCED)
 
 app.UseExceptionHandler(exceptionHandlerApp =>
 {
@@ -280,29 +378,57 @@ app.UseExceptionHandler(exceptionHandlerApp =>
         context.Response.ContentType = "application/json";
 
         var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
 
         if (exceptionHandlerPathFeature?.Error != null)
         {
-            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogError(exceptionHandlerPathFeature.Error, "Unhandled exception");
+            logger.LogError(exceptionHandlerPathFeature.Error,
+                "Unhandled exception at {Path}",
+                exceptionHandlerPathFeature.Path);
 
             var errorResponse = new
             {
                 Success = false,
                 Message = "An internal server error occurred",
-                Error = exceptionHandlerPathFeature.Error.Message,
+                Error = environment.IsDevelopment() ? exceptionHandlerPathFeature.Error.Message : "Internal server error",
                 Path = exceptionHandlerPathFeature.Path,
                 Timestamp = DateTime.UtcNow
             };
 
-            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(errorResponse));
+            await context.Response.WriteAsJsonAsync(errorResponse);
         }
     });
 });
 
-// Bật detailed errors
-app.UseDeveloperExceptionPage();
+// Thêm middleware logging
+app.Use(async (context, next) =>
+{
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation($"Request: {context.Request.Method} {context.Request.Path}");
+    await next();
+    logger.LogInformation($"Response: {context.Response.StatusCode} for {context.Request.Path}");
+});
 
 #endregion
 
 app.Run();
+
+#region ADDITIONAL CLASSES
+
+// Converter cho DateOnly
+public class DateOnlyJsonConverter : JsonConverter<DateOnly>
+{
+    private const string Format = "yyyy-MM-dd";
+
+    public override DateOnly Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return DateOnly.Parse(reader.GetString());
+    }
+
+    public override void Write(Utf8JsonWriter writer, DateOnly value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value.ToString(Format));
+    }
+}
+
+#endregion
