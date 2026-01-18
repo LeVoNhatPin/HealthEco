@@ -31,7 +31,8 @@ export default function LoginPage() {
       await login(email, password);
       setSuccess('Đăng nhập thành công! Đang chuyển hướng...');
       setTimeout(() => {
-        router.push('/bang-dieu-khien');
+        // router.push('/bang-dieu-khien');
+        setSuccess('Đăng nhập thành công! Đang chuyển hướng...');
       }, 1000);
     } catch (err: any) {
       setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
