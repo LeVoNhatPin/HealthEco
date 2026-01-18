@@ -37,60 +37,65 @@ namespace HealthEco.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Register(DoctorRegisterRequest request)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            try
+            return await strategy.ExecuteAsync<IActionResult>(async () =>
             {
-                if (await _context.Users.AnyAsync(x => x.Email == request.Email))
-                    return BadRequest("Email đã tồn tại");
+                await using var transaction = await _context.Database.BeginTransactionAsync();
 
-                if (await _context.Doctors.AnyAsync(x => x.MedicalLicense == request.MedicalLicense))
-                    return BadRequest("Giấy phép hành nghề đã tồn tại");
-
-                var user = new User
+                try
                 {
-                    Email = request.Email,
-                    PasswordHash = _authService.HashPassword(request.Password),
-                    FullName = request.FullName,
-                    PhoneNumber = request.PhoneNumber,
-                    DateOfBirth = request.DateOfBirth.HasValue
-                        ? DateOnly.FromDateTime(request.DateOfBirth.Value)
-                        : null,
-                    Address = request.Address,
-                    City = request.City,
-                    Role = UserRole.Doctor
-                };
+                    if (await _context.Users.AnyAsync(x => x.Email == request.Email))
+                        return BadRequest("Email đã tồn tại");
 
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
+                    if (await _context.Doctors.AnyAsync(x => x.MedicalLicense == request.MedicalLicense))
+                        return BadRequest("Giấy phép hành nghề đã tồn tại");
 
-                var doctor = new Doctor
+                    var user = new User
+                    {
+                        Email = request.Email,
+                        PasswordHash = _authService.HashPassword(request.Password),
+                        FullName = request.FullName,
+                        PhoneNumber = request.PhoneNumber,
+                        DateOfBirth = request.DateOfBirth.HasValue
+                            ? DateOnly.FromDateTime(request.DateOfBirth.Value)
+                            : null,
+                        Address = request.Address,
+                        City = request.City,
+                        Role = UserRole.Doctor
+                    };
+
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync();
+
+                    var doctor = new Doctor
+                    {
+                        UserId = user.Id,
+                        MedicalLicense = request.MedicalLicense,
+                        LicenseImageUrl = request.LicenseImageUrl,
+                        SpecializationId = request.SpecializationId,
+                        YearsExperience = request.YearsExperience,
+                        Qualifications = request.Qualifications,
+                        Bio = request.Bio,
+                        ConsultationFee = request.ConsultationFee
+                    };
+
+                    _context.Doctors.Add(doctor);
+                    await _context.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+
+                    return Ok(new
+                    {
+                        message = "Đăng ký bác sĩ thành công, chờ xác minh"
+                    });
+                }
+                catch
                 {
-                    UserId = user.Id,
-                    MedicalLicense = request.MedicalLicense,
-                    LicenseImageUrl = request.LicenseImageUrl,
-                    SpecializationId = request.SpecializationId,
-                    YearsExperience = request.YearsExperience,
-                    Qualifications = request.Qualifications,
-                    Bio = request.Bio,
-                    ConsultationFee = request.ConsultationFee
-                };
-
-                _context.Doctors.Add(doctor);
-                await _context.SaveChangesAsync();
-
-                await transaction.CommitAsync();
-
-                return Ok(new
-                {
-                    message = "Đăng ký bác sĩ thành công, chờ xác minh"
-                });
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         [HttpGet]
