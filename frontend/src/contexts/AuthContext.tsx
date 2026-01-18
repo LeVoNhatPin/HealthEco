@@ -1,3 +1,4 @@
+// frontend/src/contexts/AuthContext.tsx
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -5,6 +6,7 @@ import { authService } from '@/services/auth.service';
 import { AuthResponse, User } from '@/types/auth';
 import { ApiResponse } from '@/types/api';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation'; // THÊM IMPORT
 
 interface AuthContextType {
     user: User | null;
@@ -20,6 +22,7 @@ interface AuthContextType {
     isAdmin: () => boolean;
     isDoctor: () => boolean;
     isPatient: () => boolean;
+    getRedirectPath: (user: User) => string; // THÊM METHOD MỚI
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,10 +42,27 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter(); // THÊM HOOK ROUTER
 
     useEffect(() => {
         checkAuth();
     }, []);
+
+    // ================= HELPER FUNCTION =================
+    const getRedirectPath = (user: User): string => {
+        switch (user.role) {
+            case 'Patient':
+                return '/bang-dieu-khien';
+            case 'Doctor':
+                return '/bac-si/bang-dieu-khien';
+            case 'ClinicAdmin':
+                return '/phong-kham/bang-dieu-khien';
+            case 'SystemAdmin':
+                return '/admin/bang-dieu-khien';
+            default:
+                return '/';
+        }
+    };
 
     const checkAuth = async () => {
         try {
@@ -61,15 +81,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
-    // ================= LOGIN =================
+    // ================= LOGIN (SỬA LẠI) =================
     const login = async (email: string, password: string) => {
         setIsLoading(true);
         try {
             const response = await authService.login({ email, password });
 
             if (response.success && response.data) {
-                setUser(response.data.user);
+                const userData = response.data.user;
+                setUser(userData);
                 toast.success(response.message || 'Đăng nhập thành công');
+                
+                // QUAN TRỌNG: THÊM LOGIC REDIRECT DỰA TRÊN ROLE
+                const redirectPath = getRedirectPath(userData);
+                router.push(redirectPath);
+                
             } else {
                 toast.error(response.message || 'Đăng nhập thất bại');
                 throw new Error(response.message);
@@ -89,8 +115,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const response = await authService.register(data);
 
             if (response.success && response.data) {
-                setUser(response.data.user);
+                const userData = response.data.user;
+                setUser(userData);
                 toast.success(response.message || 'Đăng ký thành công');
+                
+                // Redirect sau khi đăng ký
+                const redirectPath = getRedirectPath(userData);
+                router.push(redirectPath);
+                
                 return response;
             }
 
@@ -111,6 +143,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             await authService.logout();
             setUser(null);
             toast.success('Đăng xuất thành công');
+            router.push('/dang-nhap'); // Redirect về trang login
         } catch (error: any) {
             toast.error('Đăng xuất thất bại');
             throw error;
@@ -178,10 +211,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     // ================= ROLE HELPERS =================
-    const hasRole = (role: string): boolean => authService.hasRole(role);
-    const isAdmin = (): boolean => authService.isAdmin();
-    const isDoctor = (): boolean => authService.isDoctor();
-    const isPatient = (): boolean => authService.isPatient();
+    const hasRole = (role: string): boolean => {
+        if (!user) return false;
+        return user.role === role;
+    };
+    
+    const isAdmin = (): boolean => hasRole('SystemAdmin');
+    const isDoctor = (): boolean => hasRole('Doctor');
+    const isPatient = (): boolean => hasRole('Patient');
 
     const value: AuthContextType = {
         user,
@@ -197,6 +234,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAdmin,
         isDoctor,
         isPatient,
+        getRedirectPath, // THÊM VÀO CONTEXT VALUE
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
