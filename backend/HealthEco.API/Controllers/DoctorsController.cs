@@ -94,11 +94,13 @@ namespace HealthEco.API.Controllers
                         message = "Đăng ký bác sĩ thành công, chờ xác minh"
                     });
                 }
-                catch
+                catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    throw;
+                    _logger.LogError(ex, "Error registering doctor");
+                    return StatusCode(500, new { message = "Lỗi server khi đăng ký bác sĩ" });
                 }
+
             });
         }
 
@@ -120,7 +122,8 @@ namespace HealthEco.API.Controllers
                         d.User.FullName.Contains(request.SearchTerm) ||
                         d.User.City.Contains(request.SearchTerm) ||
                         (d.Specialization != null && d.Specialization.Name.Contains(request.SearchTerm)) ||
-                        d.Qualifications.Contains(request.SearchTerm)
+                        (d.Qualifications != null && d.Qualifications.Contains(request.SearchTerm))
+
                     );
                 }
 
