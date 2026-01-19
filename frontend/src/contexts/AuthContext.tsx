@@ -1,50 +1,31 @@
+// frontend/src/contexts/AuthContext.tsx
 'use client';
 
-import React, {
-    createContext,
-    useContext,
-    useState,
-    useEffect,
-    ReactNode,
-} from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService } from '@/services/auth.service';
 import { AuthResponse, User } from '@/types/auth';
 import { ApiResponse } from '@/types/api';
-
-/* ===================== TYPES ===================== */
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation'; // THÊM IMPORT
 
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-
     login: (email: string, password: string) => Promise<void>;
     register: (data: any) => Promise<ApiResponse<AuthResponse>>;
     logout: () => Promise<void>;
-
     updateProfile: (data: any) => Promise<ApiResponse<User>>;
-    changePassword: (
-        currentPassword: string,
-        newPassword: string
-    ) => Promise<ApiResponse<void>>;
+    changePassword: (currentPassword: string, newPassword: string) => Promise<ApiResponse<void>>;
     refreshUser: () => Promise<void>;
-
     hasRole: (role: string) => boolean;
     isAdmin: () => boolean;
-    isSystemAdmin: () => boolean;
-    isClinicAdmin: () => boolean;
     isDoctor: () => boolean;
     isPatient: () => boolean;
-
-    getRedirectPath: (user: User) => string;
+    getRedirectPath: (user: User) => string; // THÊM METHOD MỚI
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-/* ===================== HOOK ===================== */
 
 export function useAuth() {
     const context = useContext(AuthContext);
@@ -54,8 +35,6 @@ export function useAuth() {
     return context;
 }
 
-/* ===================== PROVIDER ===================== */
-
 interface AuthProviderProps {
     children: ReactNode;
 }
@@ -63,13 +42,27 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const router = useRouter();
-
-    /* ===================== INIT AUTH ===================== */
+    const router = useRouter(); // THÊM HOOK ROUTER
 
     useEffect(() => {
         checkAuth();
     }, []);
+
+    // ================= HELPER FUNCTION =================
+    const getRedirectPath = (user: User): string => {
+        switch (user.role) {
+            case 'Patient':
+                return '/bang-dieu-khien';
+            case 'Doctor':
+                return '/bac-si/bang-dieu-khien';
+            case 'ClinicAdmin':
+                return '/phong-kham/bang-dieu-khien';
+            case 'SystemAdmin':
+                return '/admin/bang-dieu-khien';
+            default:
+                return '/';
+        }
+    };
 
     const checkAuth = async () => {
         try {
@@ -88,41 +81,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
-    /* ===================== REDIRECT ===================== */
-
-    const getRedirectPath = (user: User): string => {
-        console.log('🔍 Redirect role:', user.role);
-
-        switch (user.role) {
-            case 'Patient':
-                return '/bang-dieu-khien';
-            case 'Doctor':
-                return '/bac-si/bang-dieu-khien';
-            case 'ClinicAdmin':
-                return '/phong-kham/bang-dieu-khien';
-            case 'SystemAdmin':
-                return '/admin/bang-dieu-khien';
-            default:
-                return '/';
-        }
-    };
-
-    /* ===================== AUTH ACTIONS ===================== */
-
+    // ================= LOGIN (SỬA LẠI) =================
     const login = async (email: string, password: string) => {
         setIsLoading(true);
         try {
             const response = await authService.login({ email, password });
 
-            if (!response.success || !response.data) {
-                throw new Error(response.message || 'Đăng nhập thất bại');
+            if (response.success && response.data) {
+                const userData = response.data.user;
+                setUser(userData);
+                toast.success(response.message || 'Đăng nhập thành công');
+                
+                // QUAN TRỌNG: THÊM LOGIC REDIRECT DỰA TRÊN ROLE
+                const redirectPath = getRedirectPath(userData);
+                router.push(redirectPath);
+                
+            } else {
+                toast.error(response.message || 'Đăng nhập thất bại');
+                throw new Error(response.message);
             }
-
-            const userData = response.data.user;
-            setUser(userData);
-
-            toast.success(response.message || 'Đăng nhập thành công');
-            router.push(getRedirectPath(userData));
         } catch (error: any) {
             toast.error(error?.message || 'Đăng nhập thất bại');
             throw error;
@@ -131,22 +108,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
+    // ================= REGISTER =================
     const register = async (data: any) => {
         setIsLoading(true);
         try {
             const response = await authService.register(data);
 
-            if (!response.success || !response.data) {
-                throw new Error(response.message || 'Đăng ký thất bại');
+            if (response.success && response.data) {
+                const userData = response.data.user;
+                setUser(userData);
+                toast.success(response.message || 'Đăng ký thành công');
+                
+                // Redirect sau khi đăng ký
+                const redirectPath = getRedirectPath(userData);
+                router.push(redirectPath);
+                
+                return response;
             }
 
-            const userData = response.data.user;
-            setUser(userData);
-
-            toast.success(response.message || 'Đăng ký thành công');
-            router.push(getRedirectPath(userData));
-
-            return response;
+            toast.error(response.message || 'Đăng ký thất bại');
+            throw new Error(response.message);
         } catch (error: any) {
             toast.error(error?.message || 'Đăng ký thất bại');
             throw error;
@@ -155,23 +136,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
+    // ================= LOGOUT =================
     const logout = async () => {
         setIsLoading(true);
         try {
             await authService.logout();
             setUser(null);
-
             toast.success('Đăng xuất thành công');
-            router.push('/dang-nhap');
-        } catch {
+            router.push('/dang-nhap'); // Redirect về trang login
+        } catch (error: any) {
             toast.error('Đăng xuất thất bại');
+            throw error;
         } finally {
             setIsLoading(false);
         }
     };
 
-    /* ===================== PROFILE ===================== */
-
+    // ================= UPDATE PROFILE =================
     const updateProfile = async (data: any): Promise<ApiResponse<User>> => {
         setIsLoading(true);
         try {
@@ -179,34 +160,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             if (response.success && response.data) {
                 setUser(response.data);
-                toast.success(response.message || 'Cập nhật thành công');
+                toast.success(response.message || 'Cập nhật thông tin thành công');
             } else {
                 toast.error(response.message || 'Cập nhật thất bại');
             }
 
             return response;
         } catch (error: any) {
-            toast.error(error?.message || 'Cập nhật thất bại');
+            toast.error(error?.message || 'Cập nhật thông tin thất bại');
             throw error;
         } finally {
             setIsLoading(false);
         }
     };
 
+    // ================= CHANGE PASSWORD =================
     const changePassword = async (
         currentPassword: string,
         newPassword: string
     ): Promise<ApiResponse<void>> => {
         setIsLoading(true);
         try {
-            const response = await authService.changePassword(
-                currentPassword,
-                newPassword
-            );
+            const response = await authService.changePassword(currentPassword, newPassword);
 
-            response.success
-                ? toast.success(response.message || 'Đổi mật khẩu thành công')
-                : toast.error(response.message || 'Đổi mật khẩu thất bại');
+            if (response.success) {
+                toast.success(response.message || 'Đổi mật khẩu thành công');
+            } else {
+                toast.error(response.message || 'Đổi mật khẩu thất bại');
+            }
 
             return response;
         } catch (error: any) {
@@ -217,6 +198,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
+    // ================= REFRESH USER =================
     const refreshUser = async () => {
         try {
             const freshUser = await authService.refreshUser();
@@ -224,51 +206,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 setUser(freshUser);
             }
         } catch (error) {
-            console.error('Refresh user failed:', error);
+            console.error('Failed to refresh user:', error);
         }
     };
 
-    /* ===================== ROLE HELPERS ===================== */
+    
 
-    const hasRole = (role: string): boolean =>
-        !!user && user.role === role;
+    
 
-    const isSystemAdmin = (): boolean => hasRole('SystemAdmin');
-    const isClinicAdmin = (): boolean => hasRole('ClinicAdmin');
-    const isAdmin = (): boolean =>
-        isSystemAdmin() || isClinicAdmin();
-
+    // ================= ROLE HELPERS =================
+    const hasRole = (role: string): boolean => {
+        if (!user) return false;
+        return user.role === role;
+    };
+    
+    const isAdmin = (): boolean => hasRole('SystemAdmin');
     const isDoctor = (): boolean => hasRole('Doctor');
     const isPatient = (): boolean => hasRole('Patient');
-
-    /* ===================== CONTEXT VALUE ===================== */
 
     const value: AuthContextType = {
         user,
         isLoading,
         isAuthenticated: !!user,
-
         login,
         register,
         logout,
-
         updateProfile,
         changePassword,
         refreshUser,
-
         hasRole,
         isAdmin,
-        isSystemAdmin,
-        isClinicAdmin,
         isDoctor,
         isPatient,
-
-        getRedirectPath,
+        getRedirectPath, // THÊM VÀO CONTEXT VALUE
     };
 
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
