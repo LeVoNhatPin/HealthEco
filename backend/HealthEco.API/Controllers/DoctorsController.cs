@@ -2,6 +2,7 @@
 using HealthEco.Core.DTOs;
 using HealthEco.Core.DTOs.Doctor;
 using HealthEco.Core.Entities;
+using HealthEco.Core.Entities.Enums;
 using HealthEco.Core.Enums;
 using HealthEco.Infrastructure.Data;
 using HealthEco.Infrastructure.Services;
@@ -103,6 +104,8 @@ namespace HealthEco.API.Controllers
 
             });
         }
+
+
 
         [HttpGet]
         [AllowAnonymous]
@@ -304,6 +307,125 @@ namespace HealthEco.API.Controllers
             }
         }
 
+        // Thêm vào AdminController.cs
+        [HttpGet("doctors/pending")]
+        public async Task<IActionResult> GetPendingDoctors()
+        {
+            try
+            {
+                var pendingDoctors = await _context.Doctors
+                    .Include(d => d.User)
+                    .Include(d => d.Specialization)
+                    .Where(d => !d.IsVerified && d.User.IsActive)
+                    .Select(d => new
+                    {
+                        d.Id,
+                        d.UserId,
+                        d.MedicalLicense,
+                        d.LicenseImageUrl,
+                        d.SpecializationId,
+                        d.YearsExperience,
+                        d.Qualifications,
+                        d.Bio,
+                        d.ConsultationFee,
+                        d.Rating,
+                        d.TotalReviews,
+                        d.IsVerified,
+                        d.CreatedAt,
+                        User = new
+                        {
+                            d.User.Id,
+                            d.User.Email,
+                            d.User.FullName,
+                            d.User.PhoneNumber,
+                            d.User.DateOfBirth,
+                            d.User.Address,
+                            d.User.City,
+                            d.User.AvatarUrl,
+                            d.User.IsActive
+                        },
+                        Specialization = d.Specialization != null ? new
+                        {
+                            d.Specialization.Id,
+                            d.Specialization.Name,
+                            d.Specialization.Description,
+                            d.Specialization.IconUrl
+                        } : null
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = pendingDoctors
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy danh sách bác sĩ chờ xác minh");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi lấy danh sách bác sĩ chờ xác minh"
+                });
+            }
+        }
+
+        [HttpGet("reports")]
+        public async Task<IActionResult> GetReports([FromQuery] string period = "month")
+        {
+            try
+            {
+                // Implement report logic based on period
+                var now = DateTime.UtcNow;
+                DateTime startDate = period switch
+                {
+                    "day" => now.Date,
+                    "week" => now.AddDays(-7),
+                    "month" => now.AddMonths(-1),
+                    "year" => now.AddYears(-1),
+                    _ => now.AddMonths(-1)
+                };
+
+                var totalAppointments = await _context.Appointments
+                    .Where(a => a.CreatedAt >= startDate)
+                    .CountAsync();
+
+                var totalRevenue = await _context.Payments
+    .Where(p => p.PaidAt >= startDate && p.Status == PaymentStatus.Success)
+    .SumAsync(p => p.Amount);
+
+                var newUsers = await _context.Users
+                    .Where(u => u.CreatedAt >= startDate)
+                    .CountAsync();
+
+                var completedAppointments = await _context.Appointments
+    .Where(a => a.CreatedAt >= startDate && a.Status == AppointmentStatus.Completed)
+    .CountAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        totalAppointments,
+                        totalRevenue,
+                        newUsers,
+                        completedAppointments
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy báo cáo");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Đã xảy ra lỗi khi lấy báo cáo"
+                });
+            }
+        }
+
         [HttpPut("{id}")]
         [Authorize(Roles = "Doctor,SystemAdmin")]
         public async Task<IActionResult> UpdateDoctor(int id, [FromBody] DoctorUpdateRequest request)
@@ -385,69 +507,6 @@ namespace HealthEco.API.Controllers
             await _context.SaveChangesAsync();
 
             return Ok("Cập nhật trạng thái xác minh thành công");
-        }
-
-
-        [HttpGet("pending")]
-        [Authorize(Roles = "SystemAdmin")]
-        public async Task<IActionResult> GetPendingDoctors()
-        {
-            try
-            {
-                var pendingDoctors = await _context.Doctors
-                    .Include(d => d.User)
-                    .Include(d => d.Specialization)
-                    .Where(d => !d.IsVerified && d.User.IsActive)
-                    .Select(d => new DoctorResponse
-                    {
-                        Id = d.Id,
-                        UserId = d.UserId,
-                        User = new UserResponse
-                        {
-                            Id = d.User.Id,
-                            Email = d.User.Email,
-                            FullName = d.User.FullName,
-                            Role = d.User.Role.ToString(),
-                            PhoneNumber = d.User.PhoneNumber,
-                            DateOfBirth = d.User.DateOfBirth,
-                            Address = d.User.Address,
-                            City = d.User.City,
-                            AvatarUrl = d.User.AvatarUrl,
-                            IsActive = d.User.IsActive,
-                            IsEmailVerified = d.User.IsEmailVerified,
-                            CreatedAt = d.User.CreatedAt,
-                            UpdatedAt = d.User.UpdatedAt
-                        },
-                        MedicalLicense = d.MedicalLicense,
-                        LicenseImageUrl = d.LicenseImageUrl,
-                        SpecializationId = d.SpecializationId,
-                        Specialization = d.Specialization != null ? new SpecializationResponse
-                        {
-                            Id = d.Specialization.Id,
-                            Name = d.Specialization.Name,
-                            Description = d.Specialization.Description,
-                            IconUrl = d.Specialization.IconUrl,
-                            IsActive = d.Specialization.IsActive
-                        } : null,
-                        YearsExperience = d.YearsExperience,
-                        Qualifications = d.Qualifications,
-                        Bio = d.Bio,
-                        ConsultationFee = d.ConsultationFee,
-                        Rating = d.Rating,
-                        TotalReviews = d.TotalReviews,
-                        IsVerified = d.IsVerified,
-                        CreatedAt = d.CreatedAt,
-                        UpdatedAt = d.UpdatedAt
-                    })
-                    .ToListAsync();
-
-                return Ok(new { success = true, data = pendingDoctors });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting pending doctors");
-                return StatusCode(500, new { message = $"Lỗi server: {ex.Message}" });
-            }
         }
     }
 }

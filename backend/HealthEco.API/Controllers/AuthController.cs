@@ -414,6 +414,62 @@ namespace HealthEco.API.Controllers
             });
         }
 
+        // Thêm vào AuthController.cs hoặc tạo AdminAuthController
+        [HttpPost("admin/login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> AdminLogin([FromBody] LoginRequest request)
+        {
+            try
+            {
+                var result = await _authService.LoginAsync(request.Email, request.Password);
+                var user = result.user;
+                var token = result.token;
+                var refreshToken = result.refreshToken;
+
+                // Kiểm tra nếu không phải admin
+                if (user.Role != UserRole.SystemAdmin && user.Role != UserRole.ClinicAdmin)
+                {
+                    return Unauthorized(new AuthResponse
+                    {
+                        Success = false,
+                        Message = "Tài khoản không có quyền truy cập admin"
+                    });
+                }
+
+                var response = new AuthResponse
+                {
+                    Success = true,
+                    Message = "Đăng nhập admin thành công",
+                    Data = new AuthData
+                    {
+                        Token = token,
+                        RefreshToken = refreshToken,
+                        User = MapToUserDto(user)
+                    }
+                };
+
+                return Ok(response);
+            }
+            catch (AuthException ex)
+            {
+                _logger.LogWarning($"AuthException in admin login: {ex.Message}");
+                return Unauthorized(new AuthResponse
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Exception in admin login for email: {request.Email}");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Internal server error"
+                });
+            }
+        }
+
         [Authorize]
         [HttpGet("activity")]
         public async Task<IActionResult> GetUserActivity([FromQuery] int days = 30)

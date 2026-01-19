@@ -20,6 +20,11 @@ namespace HealthEco.Infrastructure.Data
         // Thêm DbSet cho Specialization
         public DbSet<Specialization> Specializations => Set<Specialization>();
 
+        public DbSet<Appointment> Appointments => Set<Appointment>();
+        public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<Review> Reviews => Set<Review>();
+
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

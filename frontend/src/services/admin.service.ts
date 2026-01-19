@@ -116,19 +116,50 @@ export const adminService = {
         }
     },
 
-    // Xác minh
     getPendingVerifications: async () => {
         try {
-            const response = await api.get(
-                "/api/v1/admin/verifications/pending",
-            );
+            // Thử gọi API chuyên biệt nếu có
+            const response = await api.get("/api/v1/admin/doctors/pending");
             return response.data;
         } catch (error: any) {
-            console.error("Error fetching pending verifications:", error);
+            // Nếu API chưa có, gọi API thường với filter
+            console.warn(
+                "Pending verifications API not available, using fallback",
+            );
+            const response = await api.get("/api/v1/admin/doctors", {
+                params: { isVerified: false },
+            });
+            return response.data;
+        }
+    },
+
+    // Lấy thống kê báo cáo
+    getReports: async (params?: any) => {
+        try {
+            const response = await api.get("/api/v1/admin/reports", { params });
+            return response.data;
+        } catch (error: any) {
+            console.error("Error fetching reports:", error);
             throw (
                 error.response?.data || {
                     success: false,
-                    message: "Lỗi tải danh sách chờ xác minh",
+                    message: "Lỗi tải báo cáo",
+                }
+            );
+        }
+    },
+
+    // Lấy danh sách sự cố
+    getIssues: async (params?: any) => {
+        try {
+            const response = await api.get("/api/v1/admin/issues", { params });
+            return response.data;
+        } catch (error: any) {
+            console.error("Error fetching issues:", error);
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Lỗi tải danh sách sự cố",
                 }
             );
         }
