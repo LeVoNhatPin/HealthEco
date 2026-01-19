@@ -212,7 +212,15 @@ class AuthService {
 
     isAdmin(): boolean {
         const user = this.getUser();
-        return user?.role === "SystemAdmin" || user?.role === "ClinicAdmin";
+        if (!user?.role) return false;
+
+        return [
+            "SystemAdmin",
+            "ClinicAdmin",
+            "Admin",
+            "ADMIN",
+            "SuperAdmin",
+        ].includes(user.role);
     }
 
     isDoctor(): boolean {
