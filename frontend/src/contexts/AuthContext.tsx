@@ -91,11 +91,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 const userData = response.data.user;
                 setUser(userData);
                 toast.success(response.message || 'Đăng nhập thành công');
-                
+
                 // QUAN TRỌNG: THÊM LOGIC REDIRECT DỰA TRÊN ROLE
                 const redirectPath = getRedirectPath(userData);
                 router.push(redirectPath);
-                
+
             } else {
                 toast.error(response.message || 'Đăng nhập thất bại');
                 throw new Error(response.message);
@@ -118,11 +118,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 const userData = response.data.user;
                 setUser(userData);
                 toast.success(response.message || 'Đăng ký thành công');
-                
+
                 // Redirect sau khi đăng ký
                 const redirectPath = getRedirectPath(userData);
                 router.push(redirectPath);
-                
+
                 return response;
             }
 
@@ -210,17 +210,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
-    
 
-    
+
+
 
     // ================= ROLE HELPERS =================
     const hasRole = (role: string): boolean => {
-        if (!user) return false;
-        return user.role === role;
+        return user?.role === role;
     };
-    
-    const isAdmin = (): boolean => hasRole('SystemAdmin');
+
+
+    const isAdmin = (): boolean => user?.role === 'SystemAdmin' || user?.role === 'ClinicAdmin';
     const isDoctor = (): boolean => hasRole('Doctor');
     const isPatient = (): boolean => hasRole('Patient');
 

@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface ProtectedRouteProps {
     children: React.ReactNode;
     allowedRoles?: string[];
-    adminOnly?: boolean; 
+    adminOnly?: boolean;
 }
 
 export function ProtectedRoute({
@@ -15,13 +15,7 @@ export function ProtectedRoute({
     allowedRoles,
     adminOnly = false,
 }: ProtectedRouteProps) {
-    const {
-        isAuthenticated,
-        user,
-        isLoading,
-        isAdmin,
-    } = useAuth();
-
+    const { isAuthenticated, user, isLoading, isAdmin } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
@@ -29,19 +23,19 @@ export function ProtectedRoute({
 
         // Chưa đăng nhập
         if (!isAuthenticated) {
-            router.push('/dang-nhap');
+            router.replace('/dang-nhap');
             return;
         }
 
-        // Chỉ cho admin
+        // Admin only
         if (adminOnly && !isAdmin()) {
-            router.push('/khong-co-quyen');
+            router.replace('/khong-co-quyen');
             return;
         }
 
-        // Check role cụ thể
-        if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-            router.push('/khong-co-quyen');
+        // Role cụ thể (bỏ qua nếu adminOnly = true)
+        if (!adminOnly && allowedRoles && user && !allowedRoles.includes(user.role)) {
+            router.replace('/khong-co-quyen');
         }
     }, [isAuthenticated, isLoading, user, allowedRoles, adminOnly, isAdmin, router]);
 
@@ -53,13 +47,11 @@ export function ProtectedRoute({
         );
     }
 
-    if (
-        !isAuthenticated ||
-        (adminOnly && !isAdmin()) ||
-        (allowedRoles && user && !allowedRoles.includes(user.role))
-    ) {
+    // ❌ Không render nếu không đủ quyền
+    if (!isAuthenticated) return null;
+    if (adminOnly && !isAdmin()) return null;
+    if (!adminOnly && allowedRoles && user && !allowedRoles.includes(user.role))
         return null;
-    }
 
     return <>{children}</>;
 }

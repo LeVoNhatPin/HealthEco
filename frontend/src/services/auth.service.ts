@@ -32,13 +32,13 @@ class AuthService {
         try {
             const response = await apiClient.post<ApiResponse<AuthResponse>>(
                 "/api/v1/auth/login",
-                credentials
+                credentials,
             );
 
             if (response.data.success && response.data.data) {
                 this.setTokens(
                     response.data.data.token,
-                    response.data.data.refreshToken
+                    response.data.data.refreshToken,
                 );
                 this.setUser(response.data.data.user);
             }
@@ -73,7 +73,7 @@ class AuthService {
 
             const response = await apiClient.post<ApiResponse<AuthResponse>>(
                 "/api/v1/auth/register",
-                registerData
+                registerData,
             );
 
             console.log("Register response:", response.data); // Debug
@@ -81,7 +81,7 @@ class AuthService {
             if (response.data.success && response.data.data) {
                 this.setTokens(
                     response.data.data.token,
-                    response.data.data.refreshToken
+                    response.data.data.refreshToken,
                 );
                 this.setUser(response.data.data.user);
             }
@@ -106,6 +106,8 @@ class AuthService {
     async logout(): Promise<void> {
         try {
             await apiClient.post("/api/v1/auth/logout");
+        } catch {
+            // ignore lỗi token hết hạn
         } finally {
             this.clearAuth();
         }
@@ -113,23 +115,24 @@ class AuthService {
 
     async getCurrentUser(): Promise<User | null> {
         const token = this.getToken();
-        if (!token) return null;
-
-        // ✅ ĐÃ CÓ USER → KHÔNG GỌI API
-        const cachedUser = this.getUser();
-        if (cachedUser) return cachedUser;
+        if (!token) {
+            this.clearAuth();
+            return null;
+        }
 
         try {
-            const response = await apiClient.get<ApiResponse<User>>(
-                "/api/v1/auth/me"
-            );
+            const response =
+                await apiClient.get<ApiResponse<User>>("/api/v1/auth/me");
 
             if (response.data.success && response.data.data) {
                 this.setUser(response.data.data);
                 return response.data.data;
             }
+
+            this.clearAuth();
             return null;
         } catch {
+            this.clearAuth();
             return null;
         }
     }
@@ -145,7 +148,7 @@ class AuthService {
         try {
             const response = await apiClient.put<ApiResponse<User>>(
                 "/api/v1/user/profile", // Hoặc "/api/v1/user/profile" nếu bạn có endpoint riêng
-                data
+                data,
             );
 
             if (response.data.success && response.data.data) {
@@ -165,12 +168,12 @@ class AuthService {
 
     async changePassword(
         currentPassword: string,
-        newPassword: string
+        newPassword: string,
     ): Promise<ApiResponse<void>> {
         try {
             const response = await apiClient.post<ApiResponse<void>>(
                 "/api/v1/auth/change-password", // ✅ POST
-                { currentPassword, newPassword }
+                { currentPassword, newPassword },
             );
 
             return response.data;
@@ -189,9 +192,8 @@ class AuthService {
         if (!token) return null; // ⛔ CHẶN NGUỒN SPAM
 
         try {
-            const response = await apiClient.get<ApiResponse<User>>(
-                "/api/v1/auth/me"
-            );
+            const response =
+                await apiClient.get<ApiResponse<User>>("/api/v1/auth/me");
 
             if (response.data.success && response.data.data) {
                 this.setUser(response.data.data);
@@ -224,7 +226,7 @@ class AuthService {
     }
 
     isAuthenticated(): boolean {
-        return !!this.getToken();
+        return !!this.getToken() && !!this.getUser();
     }
 
     getUser(): User | null {
