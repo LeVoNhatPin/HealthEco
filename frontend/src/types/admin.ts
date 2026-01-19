@@ -1,11 +1,11 @@
 // frontend/src/types/admin.ts
 export interface SystemStats {
     totalUsers: number;
-    totalDoctors: number;
-    totalClinics: number;
-    totalAppointments: number;
-    monthlyRevenue: number;
-    pendingVerifications: number;
+    activeUsers: number;
+    patients: number;
+    doctors: number;
+    admins: number;
+    inactiveUsers: number;
 }
 
 export interface User {
@@ -13,7 +13,7 @@ export interface User {
     email: string;
     fullName: string;
     role: string;
-    phoneNumber?: string;
+    phoneNumber: string;
     isActive: boolean;
     isEmailVerified: boolean;
     createdAt: string;
@@ -26,6 +26,7 @@ export interface Doctor {
     isVerified: boolean;
     consultationFee: number;
     rating: number;
+    totalReviews: number;
     user: User;
 }
 
@@ -36,16 +37,4 @@ export interface Clinic {
     phoneNumber: string;
     isActive: boolean;
     createdAt: string;
-}
-
-export interface AdminResponse<T> {
-    success: boolean;
-    message: string;
-    data?: T;
-    pagination?: {
-        page: number;
-        pageSize: number;
-        total: number;
-        totalPages: number;
-    };
 }

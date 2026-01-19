@@ -1,89 +1,136 @@
 // frontend/src/services/admin.service.ts
-import apiClient from '@/lib/api/client';
+import api from "@/lib/api/client";
 
 export const adminService = {
-    // ================= SYSTEM STATS =================
+    // Thống kê hệ thống
     getSystemStats: async () => {
         try {
-            const response = await apiClient.get('/api/v1/admin/stats');
+            const response = await api.get("/api/v1/admin/statistics");
             return response.data;
         } catch (error: any) {
-            console.error('Error fetching system stats:', error);
-            throw error.response?.data || { success: false, message: 'Lỗi tải thống kê hệ thống' };
+            console.error("Error fetching system stats:", error);
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Lỗi tải thống kê hệ thống",
+                }
+            );
         }
     },
 
-    // ================= USER MANAGEMENT =================
+    // Quản lý người dùng
     getUsers: async (params?: any) => {
         try {
-            const response = await apiClient.get('/api/v1/admin/users', { params });
+            const response = await api.get("/api/v1/admin/users", { params });
             return response.data;
         } catch (error: any) {
-            console.error('Error fetching users:', error);
-            throw error.response?.data || { success: false, message: 'Lỗi tải danh sách người dùng' };
+            console.error("Error fetching users:", error);
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Lỗi tải danh sách người dùng",
+                }
+            );
         }
     },
 
-    updateUserStatus: async (userId: number, status: boolean) => {
+    getUserById: async (id: number) => {
         try {
-            const response = await apiClient.patch(`/api/v1/admin/users/${userId}/status`, { isActive: status });
+            const response = await api.get(`/api/v1/admin/users/${id}`);
             return response.data;
         } catch (error: any) {
-            console.error('Error updating user status:', error);
-            throw error.response?.data || { success: false, message: 'Lỗi cập nhật trạng thái' };
+            console.error("Error fetching user:", error);
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Lỗi tải thông tin người dùng",
+                }
+            );
         }
     },
 
-    // ================= DOCTOR MANAGEMENT =================
+    updateUserStatus: async (id: number, isActive: boolean) => {
+        try {
+            const response = await api.put(`/api/v1/admin/users/${id}/status`, {
+                isActive,
+            });
+            return response.data;
+        } catch (error: any) {
+            console.error("Error updating user status:", error);
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Lỗi cập nhật trạng thái",
+                }
+            );
+        }
+    },
+
+    // Quản lý bác sĩ
     getDoctors: async (params?: any) => {
         try {
-            const response = await apiClient.get('/api/v1/admin/doctors', { params });
+            const response = await api.get("/api/v1/admin/doctors", { params });
             return response.data;
         } catch (error: any) {
-            console.error('Error fetching doctors:', error);
-            throw error.response?.data || { success: false, message: 'Lỗi tải danh sách bác sĩ' };
+            console.error("Error fetching doctors:", error);
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Lỗi tải danh sách bác sĩ",
+                }
+            );
         }
     },
 
-    updateDoctorVerification: async (doctorId: number, verified: boolean) => {
+    verifyDoctor: async (id: number, isVerified: boolean) => {
         try {
-            const response = await apiClient.patch(`/api/v1/admin/doctors/${doctorId}/verification`, { isVerified: verified });
+            const response = await api.put(
+                `/api/v1/admin/doctors/${id}/verify`,
+                { isVerified },
+            );
             return response.data;
         } catch (error: any) {
-            console.error('Error updating doctor verification:', error);
-            throw error.response?.data || { success: false, message: 'Lỗi cập nhật xác minh' };
+            console.error("Error verifying doctor:", error);
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Lỗi xác minh bác sĩ",
+                }
+            );
         }
     },
 
-    // ================= CLINIC MANAGEMENT =================
+    // Quản lý phòng khám
     getClinics: async (params?: any) => {
         try {
-            const response = await apiClient.get('/api/v1/admin/clinics', { params });
+            const response = await api.get("/api/v1/admin/clinics", { params });
             return response.data;
         } catch (error: any) {
-            console.error('Error fetching clinics:', error);
-            throw error.response?.data || { success: false, message: 'Lỗi tải danh sách phòng khám' };
+            console.error("Error fetching clinics:", error);
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Lỗi tải danh sách phòng khám",
+                }
+            );
         }
     },
 
-    updateClinicStatus: async (clinicId: number, status: boolean) => {
+    // Xác minh
+    getPendingVerifications: async () => {
         try {
-            const response = await apiClient.patch(`/api/v1/admin/clinics/${clinicId}/status`, { isActive: status });
+            const response = await api.get(
+                "/api/v1/admin/verifications/pending",
+            );
             return response.data;
         } catch (error: any) {
-            console.error('Error updating clinic status:', error);
-            throw error.response?.data || { success: false, message: 'Lỗi cập nhật trạng thái phòng khám' };
+            console.error("Error fetching pending verifications:", error);
+            throw (
+                error.response?.data || {
+                    success: false,
+                    message: "Lỗi tải danh sách chờ xác minh",
+                }
+            );
         }
     },
-
-    // ================= APPOINTMENT MANAGEMENT =================
-    getAppointments: async (params?: any) => {
-        try {
-            const response = await apiClient.get('/api/v1/admin/appointments', { params });
-            return response.data;
-        } catch (error: any) {
-            console.error('Error fetching appointments:', error);
-            throw error.response?.data || { success: false, message: 'Lỗi tải danh sách cuộc hẹn' };
-        }
-    }
 };
