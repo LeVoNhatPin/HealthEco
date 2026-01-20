@@ -1,4 +1,5 @@
 ﻿using HealthEco.Core.Entities;
+using HealthEco.Core.Entities.Enums;
 using HealthEco.Core.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -48,8 +49,6 @@ namespace HealthEco.Infrastructure.Data
                 // ============================
                 if (!await context.Specializations.AnyAsync())
                 {
-                    _logger.LogInformation("📌 Seeding specializations...");
-
                     var specializations = new List<Specialization>
                     {
                         new()
@@ -120,12 +119,15 @@ namespace HealthEco.Infrastructure.Data
                     _logger.LogInformation("✅ Test patient created");
                 }
 
+                await context.SaveChangesAsync();
+
                 // ============================
                 // 4️⃣ TEST DOCTOR USER
                 // ============================
+                User doctorUser;
                 if (!await context.Users.AnyAsync(u => u.Email == "doctor@test.com"))
                 {
-                    var doctorUser = new User
+                    doctorUser = new User
                     {
                         Email = "doctor@test.com",
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("Doctor123!"),
@@ -144,37 +146,100 @@ namespace HealthEco.Infrastructure.Data
                     await context.SaveChangesAsync();
 
                     _logger.LogInformation("✅ Doctor user created");
+                }
+                else
+                {
+                    doctorUser = await context.Users.FirstAsync(u => u.Email == "doctor@test.com");
+                }
 
-                    // ============================
-                    // 5️⃣ DOCTOR PROFILE
-                    // ============================
+                // ============================
+                // 5️⃣ DOCTOR PROFILE
+                // ============================
+                Doctor doctor;
+                if (!await context.Doctors.AnyAsync(d => d.UserId == doctorUser.Id))
+                {
                     var specialization = await context.Specializations.FirstAsync();
 
-                    if (!await context.Doctors.AnyAsync(d => d.UserId == doctorUser.Id))
+                    doctor = new Doctor
                     {
-                        var doctorProfile = new Doctor
+                        UserId = doctorUser.Id,
+                        MedicalLicense = "BS-TEST-001",
+                        LicenseImageUrl = "/licenses/doctor-test.png",
+                        SpecializationId = specialization.Id,
+                        YearsExperience = 8,
+                        Qualifications = "Bác sĩ CKI - Đại học Y Hà Nội",
+                        Bio = "Bác sĩ có nhiều năm kinh nghiệm khám và điều trị",
+                        ConsultationFee = 300000,
+                        Rating = 4.8m,
+                        TotalReviews = 120,
+                        IsVerified = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await context.Doctors.AddAsync(doctor);
+                    await context.SaveChangesAsync();
+
+                    _logger.LogInformation("✅ Doctor profile created");
+                }
+                else
+                {
+                    doctor = await context.Doctors.FirstAsync(d => d.UserId == doctorUser.Id);
+                }
+
+                // ============================
+                // 6️⃣ MEDICAL FACILITIES
+                // ============================
+                if (!await context.MedicalFacilities.AnyAsync())
+                {
+                    var clinics = new List<MedicalFacility>
+                    {
+                        new()
                         {
-                            UserId = doctorUser.Id,
-                            MedicalLicense = "BS-TEST-001",
-                            LicenseImageUrl = "/licenses/doctor-test.png",
-                            SpecializationId = specialization.Id,
-                            YearsExperience = 8,
-                            Qualifications = "Bác sĩ CKI - Đại học Y Hà Nội",
-                            Bio = "Bác sĩ có nhiều năm kinh nghiệm khám và điều trị",
-                            ConsultationFee = 300000,
-                            Rating = 4.8m,
-                            TotalReviews = 120,
+                            Name = "Phòng khám Đa khoa HealthEco Hà Nội",
+                            Code = "CLINIC-20240101-1234",
+                            FacilityType = FacilityType.Clinic,
+                            OwnerId = doctor.Id,
+                            LicenseNumber = "PK-001-HN-2024",
+                            Address = "123 Trần Duy Hưng, Cầu Giấy",
+                            City = "Hà Nội",
+                            Phone = "02412345678",
+                            Email = "hanoi@healtheco.com",
+                            OperatingHours = "{}",
+                            Services = "[]",
+                            Description = "Phòng khám đa khoa hiện đại",
+                            IsActive = true,
                             IsVerified = true,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
-                        };
+                        }
+                    };
 
-                        await context.Doctors.AddAsync(doctorProfile);
-                        _logger.LogInformation("✅ Doctor profile created");
-                    }
+                    await context.MedicalFacilities.AddRangeAsync(clinics);
+                    await context.SaveChangesAsync();
+
+                    _logger.LogInformation("✅ Medical facilities seeded");
+
+                    // ============================
+                    // 7️⃣ DOCTOR FACILITY WORK
+                    // ============================
+                    var doctorFacilityWork = new DoctorFacilityWork
+                    {
+                        DoctorId = doctor.Id,
+                        FacilityId = clinics.First().Id,
+                        WorkType = DoctorFacilityWorkType.Employee,
+                        Status = DoctorFacilityWorkStatus.Approved,
+                        ConsultationFee = 300000,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await context.DoctorFacilityWorks.AddAsync(doctorFacilityWork);
+                    await context.SaveChangesAsync();
+
+                    _logger.LogInformation("✅ DoctorFacilityWork created");
                 }
 
-                await context.SaveChangesAsync();
                 _logger.LogInformation("🎉 Database seeding completed successfully");
             }
             catch (Exception ex)

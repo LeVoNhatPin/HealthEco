@@ -44,7 +44,7 @@ export default function Navbar() {
 
     // Hàm lấy label cho dashboard theo role
     const getDashboardLabel = (role: string) => {
-        switch (role) {
+        switch (role) { 
             case 'Doctor':
                 return 'Dashboard Bác sĩ';
             case 'ClinicAdmin':

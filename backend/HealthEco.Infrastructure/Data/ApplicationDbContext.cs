@@ -24,6 +24,9 @@ namespace HealthEco.Infrastructure.Data
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<Review> Reviews => Set<Review>();
 
+        public DbSet<MedicalFacility> MedicalFacilities => Set<MedicalFacility>();
+        public DbSet<DoctorFacilityWork> DoctorFacilityWorks => Set<DoctorFacilityWork>();
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

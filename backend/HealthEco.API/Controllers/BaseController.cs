@@ -8,14 +8,13 @@ namespace HealthEco.API.Controllers
     [ApiController]
     public abstract class BaseController : ControllerBase
     {
-        protected readonly ILogger<BaseController> _logger;
-
-        public BaseController(ILogger<BaseController> logger)
+        protected readonly ILogger? _logger;
+        protected BaseController(ILogger? logger = null)
         {
             _logger = logger;
         }
 
-        protected ILogger<BaseController> Logger => _logger;
+        protected ILogger? Logger => _logger;
 
         protected int GetUserId()
         {
