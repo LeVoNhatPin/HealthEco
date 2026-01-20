@@ -89,9 +89,10 @@ apiClient.interceptors.response.use(
         }
 
         const status = error.response?.status;
+        const errorCode = error.response?.data?.code; // 👈 QUAN TRỌNG
         const originalRequest = error.config;
 
-        // ❌ KHÔNG REFRESH cho 403 / 404 / 405
+        // ❌ KHÔNG xử lý 403 / 404 / 405
         if (status === 403 || status === 404 || status === 405) {
             return Promise.reject(error);
         }
@@ -101,12 +102,12 @@ apiClient.interceptors.response.use(
             originalRequest.url?.includes("/api/v1/auth/register") ||
             originalRequest.url?.includes("/api/v1/auth/refresh");
 
-        // ✅ REFRESH TOKEN KHI:
-        // - 401
-        // - chưa retry
-        // - không phải auth endpoint
+        /**
+         * ✅ CHỈ refresh khi token HẾT HẠN THẬT
+         */
         if (
             status === 401 &&
+            errorCode === "TOKEN_EXPIRED" && // 🔥 CỐT LÕI
             !originalRequest._retry &&
             !isAuthEndpoint
         ) {
@@ -122,7 +123,6 @@ apiClient.interceptors.response.use(
                     throw new Error("Missing token or refresh token");
                 }
 
-                // 🔁 GỌI REFRESH TOKEN
                 const res = await refreshClient.post(
                     "/api/v1/auth/refresh",
                     { token, refreshToken }
@@ -135,20 +135,12 @@ apiClient.interceptors.response.use(
                     throw new Error("Invalid refresh response");
                 }
 
-                // 💾 SAVE TOKEN MỚI
                 localStorage.setItem("healtheco_token", newToken);
-                localStorage.setItem(
-                    "healtheco_refresh_token",
-                    newRefreshToken
-                );
+                localStorage.setItem("healtheco_refresh_token", newRefreshToken);
 
-                // 🔁 GỬI LẠI REQUEST CŨ
-                originalRequest.headers.Authorization =
-                    `Bearer ${newToken}`;
-
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
                 return apiClient(originalRequest);
             } catch (err) {
-                // ❌ REFRESH FAIL → LOGOUT
                 localStorage.removeItem("healtheco_token");
                 localStorage.removeItem("healtheco_refresh_token");
                 window.location.href = "/dang-nhap";
@@ -156,8 +148,13 @@ apiClient.interceptors.response.use(
             }
         }
 
+        /**
+         * ✅ 401 NHƯNG KHÔNG PHẢI TOKEN_EXPIRED
+         * → TRẢ LỖI CHO COMPONENT XỬ LÝ
+         */
         return Promise.reject(error);
     }
 );
+
 
 export default apiClient;
