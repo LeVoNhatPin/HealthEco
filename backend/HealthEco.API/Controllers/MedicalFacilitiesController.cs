@@ -121,8 +121,9 @@ namespace HealthEco.API.Controllers
                     m.City.Contains(request.SearchTerm));
             }
 
-            if (!string.IsNullOrEmpty(request.FacilityType))
-                query = query.Where(m => m.FacilityType == (FacilityType)request.FacilityType);
+            if (request.FacilityType.HasValue)
+                query = query.Where(m => m.FacilityType == request.FacilityType.Value);
+
 
             if (!string.IsNullOrEmpty(request.City))
                 query = query.Where(m => m.City == request.City);
