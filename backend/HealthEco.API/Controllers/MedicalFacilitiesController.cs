@@ -32,34 +32,58 @@ namespace HealthEco.API.Controllers
         {
             try
             {
+                // 1. Validate model
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                if (request.FacilityType == null)
-                    return BadRequest(new { message = "Loại cơ sở là bắt buộc" });
+                // 2. Validate enum FacilityType (ENUM KHÔNG NULL → check hợp lệ)
+                if (!Enum.IsDefined(typeof(FacilityType), request.FacilityType))
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Loại cơ sở y tế không hợp lệ"
+                    });
+                }
 
+                // 3. Get doctor id from token
                 var doctorId = GetUserId();
-                if (doctorId <= 0) return Unauthorized();
+                if (doctorId <= 0)
+                    return Unauthorized();
 
+                // 4. Check doctor exists & verified
                 var doctor = await _context.Doctors
                     .Include(d => d.User)
                     .FirstOrDefaultAsync(d => d.Id == doctorId && d.IsVerified);
 
                 if (doctor == null)
                 {
-                    return BadRequest(new { success = false, message = "Bác sĩ không tồn tại hoặc chưa xác minh" });
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Bác sĩ không tồn tại hoặc chưa được xác minh"
+                    });
                 }
 
-                if (await _context.MedicalFacilities.AnyAsync(m => m.LicenseNumber == request.LicenseNumber))
+                // 5. Check duplicate license
+                var licenseExists = await _context.MedicalFacilities
+                    .AnyAsync(m => m.LicenseNumber == request.LicenseNumber);
+
+                if (licenseExists)
                 {
-                    return BadRequest(new { success = false, message = "Số giấy phép đã được đăng ký" });
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Số giấy phép đã được đăng ký"
+                    });
                 }
 
+                // 6. Create clinic
                 var clinic = new MedicalFacility
                 {
                     Name = request.Name,
                     Code = GenerateClinicCode(),
-                    FacilityType = request.FacilityType.Value,
+                    FacilityType = request.FacilityType,
                     OwnerId = doctorId,
                     LicenseNumber = request.LicenseNumber,
                     LicenseImageUrl = request.LicenseImageUrl,
@@ -83,6 +107,7 @@ namespace HealthEco.API.Controllers
                 _context.MedicalFacilities.Add(clinic);
                 await _context.SaveChangesAsync();
 
+                // 7. Link doctor ↔ clinic
                 _context.DoctorFacilityWorks.Add(new DoctorFacilityWork
                 {
                     DoctorId = doctorId,
@@ -103,7 +128,11 @@ namespace HealthEco.API.Controllers
             catch (Exception ex)
             {
                 Logger.LogError(ex, "RegisterClinic error");
-                return StatusCode(500, new { success = false, message = "Lỗi server" });
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Lỗi server"
+                });
             }
         }
 
@@ -115,7 +144,8 @@ namespace HealthEco.API.Controllers
         public async Task<IActionResult> GetClinics([FromQuery] ClinicSearchRequest request)
         {
             var query = _context.MedicalFacilities
-                .Include(m => m.Owner).ThenInclude(o => o.User)
+                .Include(m => m.Owner)
+                    .ThenInclude(o => o.User)
                 .Where(m => m.IsActive)
                 .AsQueryable();
 
@@ -124,24 +154,40 @@ namespace HealthEco.API.Controllers
                 query = query.Where(m =>
                     m.Name.Contains(request.SearchTerm) ||
                     m.Address.Contains(request.SearchTerm) ||
-                    m.City.Contains(request.SearchTerm));
+                    m.City.Contains(request.SearchTerm)
+                );
             }
 
             if (request.FacilityType.HasValue)
-                query = query.Where(m => m.FacilityType == request.FacilityType.Value);
-
+            {
+                query = query.Where(m =>
+                    m.FacilityType == request.FacilityType.Value
+                );
+            }
 
             if (!string.IsNullOrEmpty(request.City))
+            {
                 query = query.Where(m => m.City == request.City);
+            }
 
             if (request.IsVerified.HasValue)
-                query = query.Where(m => m.IsVerified == request.IsVerified);
+            {
+                query = query.Where(m => m.IsVerified == request.IsVerified.Value);
+            }
 
             query = (request.SortBy ?? "rating").ToLower() switch
             {
-                "name" => request.SortDescending ? query.OrderByDescending(m => m.Name) : query.OrderBy(m => m.Name),
-                "city" => request.SortDescending ? query.OrderByDescending(m => m.City) : query.OrderBy(m => m.City),
-                _ => request.SortDescending ? query.OrderByDescending(m => m.Rating) : query.OrderBy(m => m.Rating)
+                "name" => request.SortDescending
+                    ? query.OrderByDescending(m => m.Name)
+                    : query.OrderBy(m => m.Name),
+
+                "city" => request.SortDescending
+                    ? query.OrderByDescending(m => m.City)
+                    : query.OrderBy(m => m.City),
+
+                _ => request.SortDescending
+                    ? query.OrderByDescending(m => m.Rating)
+                    : query.OrderBy(m => m.Rating)
             };
 
             var total = await query.CountAsync();
@@ -172,15 +218,23 @@ namespace HealthEco.API.Controllers
         public async Task<IActionResult> GetMyClinics()
         {
             var doctorId = GetUserId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0)
+                return Unauthorized();
 
             var clinics = await _context.DoctorFacilityWorks
                 .Include(x => x.MedicalFacility)
-                .Where(x => x.DoctorId == doctorId && x.Status == DoctorFacilityWorkStatus.Approved)
+                .Where(x =>
+                    x.DoctorId == doctorId &&
+                    x.Status == DoctorFacilityWorkStatus.Approved
+                )
                 .Select(x => x.MedicalFacility)
                 .ToListAsync();
 
-            return Ok(new { success = true, data = clinics });
+            return Ok(new
+            {
+                success = true,
+                data = clinics
+            });
         }
 
         private string GenerateClinicCode()
