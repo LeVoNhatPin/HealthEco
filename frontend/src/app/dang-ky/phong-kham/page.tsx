@@ -74,8 +74,22 @@ export default function ClinicRegistrationPage() {
                 alert('Đăng ký thất bại: ' + response.message);
             }
         } catch (error: any) {
-            alert('Lỗi: ' + (error.response?.data?.message || error.message));
-        } finally {
+            console.group("❌ Register Clinic Failed");
+
+            if (error.response) {
+                console.error("Status:", error.response.status);
+                console.error("Response data:", error.response.data);
+                console.error("Headers:", error.response.headers);
+            } else if (error.request) {
+                console.error("No response received:", error.request);
+            } else {
+                console.error("Error message:", error.message);
+            }
+
+            console.error("Full error object:", error);
+            console.groupEnd();
+        }
+        finally {
             setIsSubmitting(false);
         }
     };

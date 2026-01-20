@@ -1,6 +1,5 @@
-import api from "@/lib/api/client";
+import apiClient from "@/lib/api/client";
 import {
-    MedicalFacility,
     MedicalFacilityRequest,
     DoctorFacilityWorkRequest,
     ClinicSearchParams,
@@ -11,36 +10,35 @@ export const clinicService = {
     // ================= CLINIC =================
 
     registerClinic: async (data: MedicalFacilityRequest) => {
-        const response = await api.post("/api/MedicalFacilities", data);
-        return response.data;
+        const res = await apiClient.post("/api/MedicalFacilities", data);
+        return res.data;
     },
 
     getClinics: async (params?: ClinicSearchParams) => {
-        const response = await api.get("/api/MedicalFacilities", { params });
-        return response.data;
+        const res = await apiClient.get("/api/MedicalFacilities", { params });
+        return res.data;
     },
 
     getClinic: async (id: number) => {
-        const response = await api.get(`/api/MedicalFacilities/${id}`);
-        return response.data;
+        const res = await apiClient.get(`/api/MedicalFacilities/${id}`);
+        return res.data;
     },
 
     updateClinic: async (id: number, data: Partial<MedicalFacilityRequest>) => {
-        const response = await api.put(`/api/MedicalFacilities/${id}`, data);
-        return response.data;
+        const res = await apiClient.put(`/api/MedicalFacilities/${id}`, data);
+        return res.data;
     },
 
     verifyClinic: async (id: number, isVerified: boolean) => {
-        const response = await api.put(
-            `/api/MedicalFacilities/${id}/verify`,
-            { isVerified }
-        );
-        return response.data;
+        const res = await apiClient.put(`/api/MedicalFacilities/${id}/verify`, {
+            isVerified,
+        });
+        return res.data;
     },
 
     getMyClinics: async () => {
-        const response = await api.get("/api/MedicalFacilities/my-clinics");
-        return response.data;
+        const res = await apiClient.get("/api/MedicalFacilities/my-clinics");
+        return res.data;
     },
 
     // ================= DOCTOR – FACILITY =================
@@ -49,46 +47,28 @@ export const clinicService = {
         clinicId: number,
         data: DoctorFacilityWorkRequest,
     ) => {
-        const response = await api.post(
+        const res = await apiClient.post(
             `/api/MedicalFacilities/${clinicId}/doctors`,
             data,
         );
-        return response.data;
+        return res.data;
     },
 
     getClinicDoctors: async (clinicId: number) => {
-        const response = await api.get(
+        const res = await apiClient.get(
             `/api/MedicalFacilities/${clinicId}/doctors`,
         );
-        return response.data;
+        return res.data;
     },
 
     updateDoctorFacilityWorkStatus: async (
         id: number,
         data: DoctorFacilityWorkStatusRequest,
     ) => {
-        const response = await api.put(
+        const res = await apiClient.put(
             `/api/DoctorFacilityWorks/${id}/status`,
             data,
         );
-        return response.data;
-    },
-
-    // ================= UTILS =================
-
-    parseOperatingHours: (json: string) => {
-        try {
-            return JSON.parse(json);
-        } catch {
-            return {};
-        }
-    },
-
-    parseServices: (json: string) => {
-        try {
-            return JSON.parse(json);
-        } catch {
-            return [];
-        }
+        return res.data;
     },
 };
