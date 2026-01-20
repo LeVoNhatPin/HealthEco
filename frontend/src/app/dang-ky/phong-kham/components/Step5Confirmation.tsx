@@ -16,8 +16,22 @@ export default function Step5Confirmation({ formData }: Step5ConfirmationProps) 
         }
     };
 
-    const operatingHours = clinicService.parseOperatingHours(formData.operatingHours || '{}');
-    const services = clinicService.parseServices(formData.services || '[]');
+    const operatingHours = (() => {
+        try {
+            return JSON.parse(formData.operatingHours || "{}");
+        } catch {
+            return {};
+        }
+    })();
+
+    const services = (() => {
+        try {
+            return JSON.parse(formData.services || "[]");
+        } catch {
+            return [];
+        }
+    })();
+
 
     const DAYS_MAP: { [key: string]: string } = {
         Monday: 'Thứ 2',
