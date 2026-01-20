@@ -32,6 +32,12 @@ namespace HealthEco.API.Controllers
         {
             try
             {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                if (request.FacilityType == null)
+                    return BadRequest(new { message = "Loại cơ sở là bắt buộc" });
+
                 var doctorId = GetUserId();
                 if (doctorId <= 0) return Unauthorized();
 
@@ -53,7 +59,7 @@ namespace HealthEco.API.Controllers
                 {
                     Name = request.Name,
                     Code = GenerateClinicCode(),
-                    FacilityType = request.FacilityType,
+                    FacilityType = request.FacilityType.Value,
                     OwnerId = doctorId,
                     LicenseNumber = request.LicenseNumber,
                     LicenseImageUrl = request.LicenseImageUrl,
