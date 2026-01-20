@@ -1,7 +1,13 @@
 import axios from "axios";
 
 /**
- * Lấy API URL an toàn (client-only)
+ * =========================
+ * GET API URL
+ * =========================
+ * Production:
+ *   https://healtheco-production.up.railway.app/api
+ * Local:
+ *   http://localhost:5000/api
  */
 const getApiUrl = () => {
     const url = process.env.NEXT_PUBLIC_API_URL;
@@ -17,7 +23,9 @@ const getApiUrl = () => {
 };
 
 /**
- * 🔹 Axios chính (có interceptor)
+ * =========================
+ * AXIOS MAIN CLIENT
+ * =========================
  */
 const apiClient = axios.create({
     headers: {
@@ -26,7 +34,10 @@ const apiClient = axios.create({
 });
 
 /**
- * 🔹 Axios RIÊNG cho refresh token (❌ KHÔNG interceptor)
+ * =========================
+ * AXIOS REFRESH CLIENT
+ * (❌ NO interceptor)
+ * =========================
  */
 const refreshClient = axios.create({
     baseURL: getApiUrl(),
@@ -42,17 +53,17 @@ const refreshClient = axios.create({
  */
 apiClient.interceptors.request.use(
     (config) => {
-        // ✅ GÁN baseURL TẠI THỜI ĐIỂM REQUEST
+        // ✅ GÁN baseURL ĐÚNG THỜI ĐIỂM
         if (!config.baseURL) {
             config.baseURL = getApiUrl();
         }
 
         const isAuthEndpoint =
-            config.url?.includes("/auth/login") ||
-            config.url?.includes("/auth/register") ||
-            config.url?.includes("/auth/refresh");
+            config.url?.includes("/api/v1/auth/login") ||
+            config.url?.includes("/api/v1/auth/register") ||
+            config.url?.includes("/api/v1/auth/refresh");
 
-        // ✅ CHỈ GẮN TOKEN KHI KHÔNG PHẢI AUTH ENDPOINT
+        // ✅ CHỈ GẮN TOKEN KHI KHÔNG PHẢI AUTH API
         if (!isAuthEndpoint && typeof window !== "undefined") {
             const token = localStorage.getItem("healtheco_token");
             if (token) {
@@ -80,17 +91,17 @@ apiClient.interceptors.response.use(
         const status = error.response?.status;
         const originalRequest = error.config;
 
-        // ❌ 403 / 405 → KHÔNG REFRESH TOKEN
-        if (status === 403 || status === 405) {
+        // ❌ KHÔNG REFRESH cho 403 / 404 / 405
+        if (status === 403 || status === 404 || status === 405) {
             return Promise.reject(error);
         }
 
         const isAuthEndpoint =
-            originalRequest.url?.includes("/auth/login") ||
-            originalRequest.url?.includes("/auth/register") ||
-            originalRequest.url?.includes("/auth/refresh");
+            originalRequest.url?.includes("/api/v1/auth/login") ||
+            originalRequest.url?.includes("/api/v1/auth/register") ||
+            originalRequest.url?.includes("/api/v1/auth/refresh");
 
-        // ✅ CHỈ REFRESH KHI:
+        // ✅ REFRESH TOKEN KHI:
         // - 401
         // - chưa retry
         // - không phải auth endpoint
@@ -108,32 +119,38 @@ apiClient.interceptors.response.use(
                 );
 
                 if (!token || !refreshToken) {
-                    throw new Error("Missing tokens");
+                    throw new Error("Missing token or refresh token");
                 }
 
-                // ✅ DÙNG refreshClient (KHÔNG interceptor)
+                // 🔁 GỌI REFRESH TOKEN
                 const res = await refreshClient.post(
                     "/api/v1/auth/refresh",
                     { token, refreshToken }
                 );
 
-                const newToken = res.data.data.token;
-                const newRefreshToken = res.data.data.refreshToken;
+                const newToken = res.data?.data?.token;
+                const newRefreshToken = res.data?.data?.refreshToken;
 
+                if (!newToken || !newRefreshToken) {
+                    throw new Error("Invalid refresh response");
+                }
+
+                // 💾 SAVE TOKEN MỚI
                 localStorage.setItem("healtheco_token", newToken);
                 localStorage.setItem(
                     "healtheco_refresh_token",
                     newRefreshToken
                 );
 
-                // 🔁 GẮN TOKEN MỚI VÀ GỬI LẠI REQUEST CŨ
+                // 🔁 GỬI LẠI REQUEST CŨ
                 originalRequest.headers.Authorization =
                     `Bearer ${newToken}`;
 
                 return apiClient(originalRequest);
             } catch (err) {
-                // ❌ REFRESH FAIL → LOGOUT CỨNG
-                localStorage.clear();
+                // ❌ REFRESH FAIL → LOGOUT
+                localStorage.removeItem("healtheco_token");
+                localStorage.removeItem("healtheco_refresh_token");
                 window.location.href = "/dang-nhap";
                 return Promise.reject(err);
             }

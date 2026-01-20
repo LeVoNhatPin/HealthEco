@@ -1,26 +1,5 @@
+import apiClient from "@/lib/api/client";
 import { DoctorRegisterRequest } from "@/types/doctor";
-
-const API_URL =
-    process.env.NEXT_PUBLIC_API_URL ||
-    "https://healtheco-production.up.railway.app";
-
-// Helper fetch có xử lý lỗi
-async function fetchJson(url: string, options?: RequestInit) {
-    const res = await fetch(url, {
-        ...options,
-        headers: {
-            "Content-Type": "application/json",
-            ...(options?.headers || {}),
-        },
-    });
-
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`HTTP ${res.status}: ${text}`);
-    }
-
-    return res.json();
-}
 
 export const doctorService = {
     // ================= REGISTER =================
@@ -37,79 +16,84 @@ export const doctorService = {
             bio: data.bio || undefined,
         };
 
-        return fetchJson(`${API_URL}/api/Doctors/register`, {
-            method: "POST",
-            body: JSON.stringify(payload),
-        });
+        const res = await apiClient.post(
+            "/api/Doctors/register",
+            payload
+        );
+        return res.data;
     },
 
     // ================= PUBLIC =================
     getDoctors: async (params?: Record<string, any>) => {
-        const query = params
-            ? "?" + new URLSearchParams(params).toString()
-            : "";
-        return fetchJson(`${API_URL}/api/Doctors${query}`);
+        const res = await apiClient.get("/api/Doctors", {
+            params,
+        });
+        return res.data;
     },
 
     getDoctor: async (id: number) => {
-        return fetchJson(`${API_URL}/api/Doctors/${id}`);
+        const res = await apiClient.get(`/api/Doctors/${id}`);
+        return res.data;
     },
 
     getSpecializations: async () => {
-        return fetchJson(`${API_URL}/api/Specializations`);
+        const res = await apiClient.get("/api/Specializations");
+        return res.data;
     },
 
     // ================= DOCTOR DASHBOARD =================
     getDoctorStats: async (doctorId: number) => {
-        return fetchJson(
-            `${API_URL}/api/Doctors/${doctorId}/stats`
+        const res = await apiClient.get(
+            `/api/Doctors/${doctorId}/stats`
         );
+        return res.data;
     },
 
     getDoctorAppointments: async (
         doctorId: number,
         params?: Record<string, any>
     ) => {
-        const query = params
-            ? "?" + new URLSearchParams(params).toString()
-            : "";
-        return fetchJson(
-            `${API_URL}/api/Doctors/${doctorId}/appointments${query}`
+        const res = await apiClient.get(
+            `/api/Doctors/${doctorId}/appointments`,
+            { params }
         );
+        return res.data;
     },
 
     getDoctorPatients: async (
         doctorId: number,
         params?: Record<string, any>
     ) => {
-        const query = params
-            ? "?" + new URLSearchParams(params).toString()
-            : "";
-        return fetchJson(
-            `${API_URL}/api/Doctors/${doctorId}/patients${query}`
+        const res = await apiClient.get(
+            `/api/Doctors/${doctorId}/patients`,
+            { params }
         );
+        return res.data;
     },
 
     getDoctorSchedule: async (doctorId: number) => {
-        return fetchJson(
-            `${API_URL}/api/Doctors/${doctorId}/schedule`
+        const res = await apiClient.get(
+            `/api/Doctors/${doctorId}/schedule`
         );
+        return res.data;
     },
 
-    updateDoctorProfile: async (doctorId: number, data: any) => {
-        return fetchJson(
-            `${API_URL}/api/Doctors/${doctorId}`,
-            {
-                method: "PUT",
-                body: JSON.stringify(data),
-            }
+    updateDoctorProfile: async (
+        doctorId: number,
+        data: any
+    ) => {
+        const res = await apiClient.put(
+            `/api/Doctors/${doctorId}`,
+            data
         );
+        return res.data;
     },
 
-    // Lấy doctor theo userId
+    // ================= UTILS =================
     getDoctorByUserId: async (userId: number) => {
-        return fetchJson(
-            `${API_URL}/api/Doctors/by-user/${userId}`
+        const res = await apiClient.get(
+            `/api/Doctors/by-user/${userId}`
         );
+        return res.data;
     },
 };

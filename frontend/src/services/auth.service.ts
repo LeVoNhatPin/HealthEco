@@ -15,6 +15,7 @@ interface AuthResponse {
 
 class AuthService {
     private static instance: AuthService;
+
     private tokenKey = "healtheco_token";
     private refreshTokenKey = "healtheco_refresh_token";
     private userKey = "healtheco_user";
@@ -28,105 +29,81 @@ class AuthService {
         return AuthService.instance;
     }
 
-    async login(credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> {
-        try {
-            const response = await apiClient.post<ApiResponse<AuthResponse>>(
-                "/api/v1/auth/login",
-                credentials,
-            );
+    // ================= AUTH =================
+    async login(
+        credentials: LoginRequest,
+    ): Promise<ApiResponse<AuthResponse>> {
+        const res = await apiClient.post<ApiResponse<AuthResponse>>(
+            "/api/v1/auth/login",
+            credentials,
+        );
 
-            if (response.data.success && response.data.data) {
-                this.setTokens(
-                    response.data.data.token,
-                    response.data.data.refreshToken,
-                );
-                this.setUser(response.data.data.user);
-            }
-
-            return response.data;
-        } catch (error: any) {
-            throw (
-                error.response?.data || {
-                    success: false,
-                    message: "Đã có lỗi xảy ra",
-                }
+        if (res.data.success && res.data.data) {
+            this.setTokens(
+                res.data.data.token,
+                res.data.data.refreshToken,
             );
+            this.setUser(res.data.data.user);
         }
+
+        return res.data;
     }
 
-    async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
-        try {
-            // Đảm bảo gửi đúng cấu trúc mà backend mong đợi
-            const registerData = {
-                email: data.email,
-                password: data.password,
-                confirmPassword: data.confirmPassword, // ⭐ THÊM DÒNG NÀY
-                fullName: data.fullName,
-                role: data.role,
-                phoneNumber: data.phoneNumber || undefined,
-                dateOfBirth: data.dateOfBirth || undefined,
-                address: data.address || undefined,
-                city: data.city || undefined,
-            };
+    async register(
+        data: RegisterRequest,
+    ): Promise<ApiResponse<AuthResponse>> {
+        const payload = {
+            email: data.email,
+            password: data.password,
+            confirmPassword: data.confirmPassword,
+            fullName: data.fullName,
+            role: data.role,
+            phoneNumber: data.phoneNumber || undefined,
+            dateOfBirth: data.dateOfBirth || undefined,
+            address: data.address || undefined,
+            city: data.city || undefined,
+        };
 
-            console.log("Sending register data:", registerData); // Debug
+        const res = await apiClient.post<ApiResponse<AuthResponse>>(
+            "/api/v1/auth/register",
+            payload,
+        );
 
-            const response = await apiClient.post<ApiResponse<AuthResponse>>(
-                "/api/v1/auth/register",
-                registerData,
+        if (res.data.success && res.data.data) {
+            this.setTokens(
+                res.data.data.token,
+                res.data.data.refreshToken,
             );
-
-            console.log("Register response:", response.data); // Debug
-
-            if (response.data.success && response.data.data) {
-                this.setTokens(
-                    response.data.data.token,
-                    response.data.data.refreshToken,
-                );
-                this.setUser(response.data.data.user);
-            }
-
-            return response.data;
-        } catch (error: any) {
-            console.error("Register error details:", {
-                status: error.response?.status,
-                data: error.response?.data,
-                message: error.message,
-            });
-
-            throw (
-                error.response?.data || {
-                    success: false,
-                    message: "Đã có lỗi xảy ra",
-                }
-            );
+            this.setUser(res.data.data.user);
         }
+
+        return res.data;
     }
 
     async logout(): Promise<void> {
         try {
+            // backend có thì gọi, không có cũng kệ
             await apiClient.post("/api/v1/auth/logout");
         } catch {
-            // ignore lỗi token hết hạn
+            /* ignore */
         } finally {
             this.clearAuth();
         }
     }
 
-    async getCurrentUser(): Promise<User | null> {
+    // ================= USER =================
+    async fetchCurrentUser(): Promise<User | null> {
         const token = this.getToken();
-        if (!token) {
-            this.clearAuth();
-            return null;
-        }
+        if (!token) return null;
 
         try {
-            const response =
-                await apiClient.get<ApiResponse<User>>("/api/v1/auth/me");
+            const res = await apiClient.get<ApiResponse<User>>(
+                "/api/v1/auth/me",
+            );
 
-            if (response.data.success && response.data.data) {
-                this.setUser(response.data.data);
-                return response.data.data;
+            if (res.data.success && res.data.data) {
+                this.setUser(res.data.data);
+                return res.data.data;
             }
 
             this.clearAuth();
@@ -137,140 +114,90 @@ class AuthService {
         }
     }
 
-    async updateProfile(data: {
-        fullName?: string;
-        phoneNumber?: string;
-        dateOfBirth?: string;
-        address?: string;
-        city?: string;
-        avatarUrl?: string;
-    }): Promise<ApiResponse<User>> {
-        try {
-            const response = await apiClient.put<ApiResponse<User>>(
-                "/api/v1/user/profile", // Hoặc "/api/v1/user/profile" nếu bạn có endpoint riêng
-                data,
-            );
+    async updateProfile(
+        data: Partial<User>,
+    ): Promise<ApiResponse<User>> {
+        const res = await apiClient.put<ApiResponse<User>>(
+            "/api/v1/user/profile",
+            data,
+        );
 
-            if (response.data.success && response.data.data) {
-                this.setUser(response.data.data);
-            }
-
-            return response.data;
-        } catch (error: any) {
-            throw (
-                error.response?.data || {
-                    success: false,
-                    message: "Đã có lỗi xảy ra khi cập nhật profile",
-                }
-            );
+        if (res.data.success && res.data.data) {
+            this.setUser(res.data.data);
         }
+
+        return res.data;
     }
 
     async changePassword(
         currentPassword: string,
         newPassword: string,
     ): Promise<ApiResponse<void>> {
-        try {
-            const response = await apiClient.post<ApiResponse<void>>(
-                "/api/v1/auth/change-password", // ✅ POST
-                { currentPassword, newPassword },
-            );
+        const res = await apiClient.post<ApiResponse<void>>(
+            "/api/v1/auth/change-password",
+            { currentPassword, newPassword },
+        );
 
-            return response.data;
-        } catch (error: any) {
-            throw (
-                error.response?.data || {
-                    success: false,
-                    message: "Đã có lỗi xảy ra khi đổi mật khẩu",
-                }
-            );
-        }
+        return res.data;
     }
 
-    async refreshUser(): Promise<User | null> {
-        const token = this.getToken();
-        if (!token) return null; // ⛔ CHẶN NGUỒN SPAM
-
-        try {
-            const response =
-                await apiClient.get<ApiResponse<User>>("/api/v1/auth/me");
-
-            if (response.data.success && response.data.data) {
-                this.setUser(response.data.data);
-                return response.data.data;
-            }
-            return null;
-        } catch {
-            return null;
-        }
-    }
-
+    // ================= ROLE =================
     hasRole(role: string): boolean {
-        const user = this.getUser();
-        return user?.role === role;
+        return this.getUser()?.role === role;
     }
 
     isAdmin(): boolean {
-        const user = this.getUser();
-        if (!user?.role) return false;
-
-        return [
-            "SystemAdmin",
-            "ClinicAdmin",
-            "Admin",
-            "ADMIN",
-            "SuperAdmin",
-        ].includes(user.role);
+        const role = this.getUser()?.role;
+        return !!role &&
+            [
+                "SystemAdmin",
+                "ClinicAdmin",
+                "Admin",
+                "ADMIN",
+                "SuperAdmin",
+            ].includes(role);
     }
 
     isDoctor(): boolean {
-        const user = this.getUser();
-        return user?.role === "Doctor";
+        return this.getUser()?.role === "Doctor";
     }
 
     isPatient(): boolean {
-        const user = this.getUser();
-        return user?.role === "Patient";
+        return this.getUser()?.role === "Patient";
     }
 
     isAuthenticated(): boolean {
         return !!this.getToken() && !!this.getUser();
     }
 
+    // ================= STORAGE =================
     getUser(): User | null {
-        if (typeof window !== "undefined") {
-            const userStr = localStorage.getItem(this.userKey);
-            return userStr ? JSON.parse(userStr) : null;
-        }
-        return null;
+        if (typeof window === "undefined") return null;
+        const raw = localStorage.getItem(this.userKey);
+        return raw ? JSON.parse(raw) : null;
     }
 
     getToken(): string | null {
-        if (typeof window !== "undefined") {
-            return localStorage.getItem(this.tokenKey);
-        }
-        return null;
+        if (typeof window === "undefined") return null;
+        return localStorage.getItem(this.tokenKey);
     }
 
-    setTokens(token: string, refreshToken: string): void {
-        if (typeof window !== "undefined") {
-            localStorage.setItem(this.tokenKey, token);
-            localStorage.setItem(this.refreshTokenKey, refreshToken);
-        }
+    private setTokens(token: string, refreshToken: string) {
+        if (typeof window === "undefined") return;
+        localStorage.setItem(this.tokenKey, token);
+        localStorage.setItem(this.refreshTokenKey, refreshToken);
     }
 
-    setUser(user: User): void {
-        if (typeof window !== "undefined") {
-            localStorage.setItem(this.userKey, JSON.stringify(user));
-        }
+    private setUser(user: User) {
+        if (typeof window === "undefined") return;
+        localStorage.setItem(this.userKey, JSON.stringify(user));
     }
 
-    clearAuth(): void {
-        if (typeof window !== "undefined") {
-            localStorage.removeItem(this.tokenKey);
-            localStorage.removeItem(this.refreshTokenKey);
-            localStorage.removeItem(this.userKey);
-        }
+    clearAuth() {
+        if (typeof window === "undefined") return;
+        localStorage.removeItem(this.tokenKey);
+        localStorage.removeItem(this.refreshTokenKey);
+        localStorage.removeItem(this.userKey);
     }
 }
 
