@@ -1,304 +1,271 @@
-// frontend/src/app/bac-si/bang-dieu-khien/page.tsx
-'use client';
+"use client";
 
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { useAuth } from '@/contexts/AuthContext';
-import { doctorService } from '@/services/doctor.service';
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Calendar, Users, Clock, DollarSign, Activity, BarChart, AlertCircle } from 'lucide-react';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { appointmentService } from "@/services/appointment.service";
+import { authService } from "@/services/auth.service";
 
-function DoctorDashboardContent() {
-    const { user, logout } = useAuth();
-    const [stats, setStats] = useState({
-        totalAppointments: 0,
-        pendingAppointments: 0,
-        totalPatients: 0,
-        monthlyRevenue: 0,
-    });
-    const [appointments, setAppointments] = useState([]);
+export default function DashboardPage() {
+    const [appointments, setAppointments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
-        const loadDoctorData = async () => {
-            if (!user) return;
+        loadData();
+    }, []);
 
-            try {
-                setError(null);
+    const loadData = async () => {
+        try {
+            const currentUser = authService.getUser();
+            setUser(currentUser);
 
-                // Lấy doctorId từ user (có thể cần lấy từ API)
-                let doctorId: number | null = null;
-
-                if (user.role === 'Doctor') {
-                    const doctorResponse = await doctorService.getDoctorByUserId(user.id);
-
-                    if (doctorResponse?.success && doctorResponse.data) {
-                        doctorId = doctorResponse.data.id;
-                    }
-                }
-
-                // Nếu chưa có doctorId, thử lấy từ API
-                if (!doctorId && user.role === 'Doctor') {
-                    try {
-                        const doctorResponse = await doctorService.getDoctorByUserId(user.id);
-                        if (doctorResponse.success && doctorResponse.data) {
-                            doctorId = doctorResponse.data.id;
-                        }
-                    } catch (err) {
-                        console.error('Không tìm thấy thông tin bác sĩ:', err);
-                    }
-                }
-
-                if (!doctorId) {
-                    setError('Không tìm thấy thông tin bác sĩ');
-                    setLoading(false);
-                    return;
-                }
-
-                // Gọi API lấy thống kê
-                const statsResponse = await doctorService.getDoctorStats(doctorId);
-                if (statsResponse.success && statsResponse.data) {
-                    setStats(statsResponse.data);
-                }
-
-                // Gọi API lấy lịch hẹn gần đây
-                const appointmentsResponse = await doctorService.getDoctorAppointments(doctorId, {
-                    page: 1,
-                    limit: 5,
-                    status: 'all'
-                });
-                if (appointmentsResponse.success && appointmentsResponse.data) {
-                    setAppointments(appointmentsResponse.data.items || appointmentsResponse.data);
-                }
-
-            } catch (err: any) {
-                console.error('Lỗi tải dữ liệu:', err);
-                setError(err.message || 'Có lỗi xảy ra khi tải dữ liệu');
-
-                // Fallback data cho demo
-                setStats({
-                    totalAppointments: 45,
-                    pendingAppointments: 8,
-                    totalPatients: 32,
-                    monthlyRevenue: 12500000,
-                });
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadDoctorData();
-    }, [user]);
-
-    const statsData = [
-        {
-            title: 'Tổng cuộc hẹn',
-            value: stats.totalAppointments,
-            icon: Calendar,
-            color: 'bg-blue-500',
-            textColor: 'text-blue-600',
-            bgColor: 'bg-blue-50'
-        },
-        {
-            title: 'Cuộc hẹn chờ xử lý',
-            value: stats.pendingAppointments,
-            icon: Clock,
-            color: 'bg-yellow-500',
-            textColor: 'text-yellow-600',
-            bgColor: 'bg-yellow-50'
-        },
-        {
-            title: 'Tổng bệnh nhân',
-            value: stats.totalPatients,
-            icon: Users,
-            color: 'bg-green-500',
-            textColor: 'text-green-600',
-            bgColor: 'bg-green-50'
-        },
-        {
-            title: 'Doanh thu tháng',
-            value: `${stats.monthlyRevenue.toLocaleString()} VNĐ`,
-            icon: DollarSign,
-            color: 'bg-purple-500',
-            textColor: 'text-purple-600',
-            bgColor: 'bg-purple-50'
+            const appointmentsData = await appointmentService.getMyAppointments();
+            setAppointments(appointmentsData.data || []);
+        } catch (error) {
+            console.error("Error loading data:", error);
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
+
+    const handleCancelAppointment = async (id: number) => {
+        if (confirm("Bạn có chắc muốn hủy lịch hẹn này?")) {
+            try {
+                await appointmentService.cancelAppointment(id);
+                alert("Hủy lịch hẹn thành công!");
+                loadData(); // Refresh data
+            } catch (error: any) {
+                alert(error.message || "Có lỗi xảy ra");
+            }
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status.toUpperCase()) {
+            case "PENDING":
+                return "bg-yellow-100 text-yellow-800";
+            case "CONFIRMED":
+                return "bg-blue-100 text-blue-800";
+            case "CHECKED_IN":
+                return "bg-purple-100 text-purple-800";
+            case "COMPLETED":
+                return "bg-green-100 text-green-800";
+            case "CANCELLED":
+                return "bg-red-100 text-red-800";
+            default:
+                return "bg-gray-100 text-gray-800";
+        }
+    };
+
+    const getStatusText = (status: string) => {
+        switch (status.toUpperCase()) {
+            case "PENDING": return "Chờ xác nhận";
+            case "CONFIRMED": return "Đã xác nhận";
+            case "CHECKED_IN": return "Đã check-in";
+            case "COMPLETED": return "Đã hoàn thành";
+            case "CANCELLED": return "Đã hủy";
+            default: return status;
+        }
+    };
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Card className="max-w-md">
-                    <CardContent className="pt-6">
-                        <div className="text-center">
-                            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-2">Lỗi tải dữ liệu</h3>
-                            <p className="text-gray-600 mb-4">{error}</p>
-                            <Button onClick={() => window.location.reload()}>
-                                Thử lại
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+            <div className="flex justify-center items-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                                Dashboard Bác Sĩ
-                            </h1>
-                            <p className="text-gray-600 mt-1">
-                                Chào mừng trở lại, <span className="font-semibold">Dr. {user?.fullName}</span>!
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-                                Bác Sĩ
-                            </span>
-                            <Button
-                                onClick={logout}
-                                variant="outline"
-                                className="border-red-300 text-red-600 hover:bg-red-50"
-                            >
-                                Đăng xuất
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </header>
+        <div className="container mx-auto p-4">
+            <h1 className="text-2xl font-bold mb-6">Bảng điều khiển</h1>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {statsData.map((stat, index) => {
-                        const Icon = stat.icon;
-                        return (
-                            <Card key={index} className="overflow-hidden border-0 shadow-sm">
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                                            <p className="text-2xl font-bold mt-2">{stat.value}</p>
-                                        </div>
-                                        <div className={`${stat.bgColor} p-3 rounded-full`}>
-                                            <Icon className={`h-6 w-6 ${stat.textColor}`} />
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
+            {/* Welcome Message */}
+            <div className="bg-gradient-to-r from-primary to-primary-dark text-white rounded-xl p-6 mb-8 shadow-lg">
+                <h2 className="text-xl font-semibold mb-2">
+                    Xin chào, {user?.fullName}!
+                </h2>
+                <p className="opacity-90">
+                    {user?.role === "Patient" && "Chào mừng bạn đến với HealthEco"}
+                    {user?.role === "Doctor" && "Chào mừng bác sĩ đến với hệ thống"}
+                    {user?.role === "SystemAdmin" && "Chào mừng quản trị viên"}
+                </p>
+            </div>
+
+            {/* Appointments Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-lg font-semibold">
+                        {user?.role === "Patient" && "Lịch hẹn của tôi"}
+                        {user?.role === "Doctor" && "Lịch hẹn với bệnh nhân"}
+                    </h2>
+                    {appointments.length > 0 && (
+                        <span className="text-sm text-gray-500">
+                            Tổng: {appointments.length} lịch hẹn
+                        </span>
+                    )}
                 </div>
 
-                {/* Recent Appointments */}
-                <Card className="border-0 shadow-sm">
-                    <CardHeader>
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div>
-                                <CardTitle>Cuộc hẹn gần đây</CardTitle>
-                                <CardDescription>Danh sách các cuộc hẹn sắp tới</CardDescription>
-                            </div>
-                            <Link
-                                href="/bac-si/lich-hen"
-                                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                {appointments.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                        <div className="text-gray-400 text-5xl mb-4">📅</div>
+                        <p className="text-gray-500 mb-4">Chưa có lịch hẹn nào</p>
+                        {user?.role === "Patient" && (
+                            <a
+                                href="/dat-lich"
+                                className="inline-block bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition"
                             >
-                                Xem tất cả →
-                            </Link>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {appointments.length > 0 ? (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead>
-                                        <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Bệnh nhân
-                                            </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Thời gian
-                                            </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Loại khám
-                                            </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Trạng thái
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {appointments.slice(0, 5).map((appointment: any) => (
-                                            <tr key={appointment.id}>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <div className="font-medium text-gray-900">
-                                                        {appointment.patientName || appointment.patient?.fullName || 'Không có tên'}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {new Date(appointment.appointmentDate).toLocaleDateString('vi-VN')}
-                                                    <br />
-                                                    {appointment.startTime} - {appointment.endTime}
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
-                                                        {appointment.type || 'Khám tổng quát'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${appointment.status === 'CONFIRMED'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : appointment.status === 'PENDING'
-                                                            ? 'bg-yellow-100 text-yellow-800'
-                                                            : appointment.status === 'CANCELLED'
-                                                                ? 'bg-red-100 text-red-800'
-                                                                : 'bg-gray-100 text-gray-800'
-                                                        }`}>
-                                                        {appointment.status === 'CONFIRMED' ? 'Đã xác nhận' :
-                                                            appointment.status === 'PENDING' ? 'Chờ xác nhận' :
-                                                                appointment.status === 'CANCELLED' ? 'Đã hủy' :
-                                                                    appointment.status === 'COMPLETED' ? 'Đã hoàn thành' : appointment.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="text-center py-8 text-gray-500">
-                                <Calendar className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                                <p>Chưa có cuộc hẹn nào</p>
-                            </div>
+                                Đặt lịch ngay
+                            </a>
                         )}
-                    </CardContent>
-                </Card>
-            </main>
-        </div>
-    );
-}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-gray-50">
+                                    <th className="px-4 py-3 text-left">Mã lịch hẹn</th>
+                                    {user?.role === "Patient" && (
+                                        <th className="px-4 py-3 text-left">Bác sĩ</th>
+                                    )}
+                                    {user?.role === "Doctor" && (
+                                        <th className="px-4 py-3 text-left">Bệnh nhân</th>
+                                    )}
+                                    <th className="px-4 py-3 text-left">Ngày giờ</th>
+                                    <th className="px-4 py-3 text-left">Cơ sở</th>
+                                    <th className="px-4 py-3 text-left">Trạng thái</th>
+                                    <th className="px-4 py-3 text-left">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {appointments.map((apt) => (
+                                    <tr key={apt.id} className="border-t hover:bg-gray-50">
+                                        <td className="px-4 py-3 font-mono text-sm">
+                                            {apt.appointmentCode}
+                                        </td>
+                                        {user?.role === "Patient" && (
+                                            <td className="px-4 py-3">
+                                                <div className="font-medium">{apt.doctorName}</div>
+                                                <div className="text-sm text-gray-500">
+                                                    {apt.consultationFee.toLocaleString()} VNĐ
+                                                </div>
+                                            </td>
+                                        )}
+                                        {user?.role === "Doctor" && (
+                                            <td className="px-4 py-3">
+                                                <div className="font-medium">{apt.patientName}</div>
+                                            </td>
+                                        )}
+                                        <td className="px-4 py-3">
+                                            <div className="font-medium">{apt.appointmentDate}</div>
+                                            <div className="text-sm text-gray-500">{apt.startTime}</div>
+                                        </td>
+                                        <td className="px-4 py-3">{apt.facilityName}</td>
+                                        <td className="px-4 py-3">
+                                            <span
+                                                className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                                    apt.status
+                                                )}`}
+                                            >
+                                                {getStatusText(apt.status)}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => window.location.href = `/lich-hen/${apt.id}`}
+                                                    className="text-primary hover:underline text-sm"
+                                                >
+                                                    Xem chi tiết
+                                                </button>
+                                                {user?.role === "Patient" &&
+                                                    apt.status === "PENDING" && (
+                                                        <button
+                                                            onClick={() => handleCancelAppointment(apt.id)}
+                                                            className="text-red-600 hover:underline text-sm"
+                                                        >
+                                                            Hủy lịch
+                                                        </button>
+                                                    )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
 
-export default function DoctorDashboardPage() {
-    return (
-        <ProtectedRoute allowedRoles={['Doctor']}>
-            <DoctorDashboardContent />
-        </ProtectedRoute>
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-medium mb-4">Thao tác nhanh</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {user?.role === "Patient" && (
+                        <>
+                            <a
+                                href="/dat-lich"
+                                className="bg-primary text-white p-4 rounded-lg hover:bg-primary-dark transition text-center"
+                            >
+                                <div className="text-2xl mb-2">🩺</div>
+                                <div className="font-medium">Đặt lịch mới</div>
+                            </a>
+                            <a
+                                href="/bac-si"
+                                className="bg-blue-50 text-primary p-4 rounded-lg hover:bg-blue-100 transition text-center border border-blue-100"
+                            >
+                                <div className="text-2xl mb-2">👨‍⚕️</div>
+                                <div className="font-medium">Tìm bác sĩ</div>
+                            </a>
+                            <a
+                                href="/phong-kham"
+                                className="bg-green-50 text-green-700 p-4 rounded-lg hover:bg-green-100 transition text-center border border-green-100"
+                            >
+                                <div className="text-2xl mb-2">🏥</div>
+                                <div className="font-medium">Tìm phòng khám</div>
+                            </a>
+                            <a
+                                href="/bang-dieu-khien/profile"
+                                className="bg-purple-50 text-purple-700 p-4 rounded-lg hover:bg-purple-100 transition text-center border border-purple-100"
+                            >
+                                <div className="text-2xl mb-2">👤</div>
+                                <div className="font-medium">Hồ sơ cá nhân</div>
+                            </a>
+                        </>
+                    )}
+                    {user?.role === "Doctor" && (
+                        <>
+                            <a
+                                href="/bac-si/lich-trinh"
+                                className="bg-primary text-white p-4 rounded-lg hover:bg-primary-dark transition text-center"
+                            >
+                                <div className="text-2xl mb-2">📅</div>
+                                <div className="font-medium">Quản lý lịch trực</div>
+                            </a>
+                            <a
+                                href="/bac-si/lich-hen"
+                                className="bg-blue-50 text-primary p-4 rounded-lg hover:bg-blue-100 transition text-center border border-blue-100"
+                            >
+                                <div className="text-2xl mb-2">👥</div>
+                                <div className="font-medium">Xem lịch hẹn</div>
+                            </a>
+                            <a
+                                href="/bac-si/benh-nhan"
+                                className="bg-green-50 text-green-700 p-4 rounded-lg hover:bg-green-100 transition text-center border border-green-100"
+                            >
+                                <div className="text-2xl mb-2">📋</div>
+                                <div className="font-medium">Danh sách bệnh nhân</div>
+                            </a>
+                            <a
+                                href="/bac-si/ho-so"
+                                className="bg-purple-50 text-purple-700 p-4 rounded-lg hover:bg-purple-100 transition text-center border border-purple-100"
+                            >
+                                <div className="text-2xl mb-2">👤</div>
+                                <div className="font-medium">Hồ sơ bác sĩ</div>
+                            </a>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
     );
 }

@@ -21,5 +21,8 @@ namespace HealthEco.Core.Entities
         public decimal ConsultationFee { get; set; }
         public decimal TotalAmount { get; set; }
         public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
+
+        public int? ScheduleId { get; set; }
+        public DoctorSchedule? Schedule { get; set; }
     }
 }
