@@ -38,7 +38,7 @@ namespace HealthEco.Infrastructure.Data
             );
 
             modelBuilder.Entity<DoctorSchedule>()
-        .ToTable("doctorschedule");
+        .ToTable("DoctorSchedule");
 
             // ❌ KHÔNG CÒN Facility mapping cho DoctorSchedule
 
