@@ -1,7 +1,10 @@
-﻿namespace HealthEco.Core.DTOs.Schedule
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace HealthEco.Core.DTOs.Schedule
 {
     public class DoctorScheduleResponse
     {
+        [Column("id")]
         public int Id { get; set; }
         public int DoctorId { get; set; }
         //public int FacilityId { get; set; }
