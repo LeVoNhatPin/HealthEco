@@ -17,28 +17,47 @@ namespace HealthEco.API.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<ScheduleController> _logger;
 
-        public ScheduleController(ApplicationDbContext context, ILogger<ScheduleController> logger)
+        public ScheduleController(
+            ApplicationDbContext context,
+            ILogger<ScheduleController> logger)
         {
             _context = context;
             _logger = logger;
         }
 
-        // GET api/schedule/my-schedules
+        // ==============================
+        // HELPER: LẤY DOCTOR TỪ JWT
+        // ==============================
+        private async Task<Doctor?> GetCurrentDoctor()
+        {
+            var userIdClaim = User.FindFirst("id")?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return null;
+
+            if (!int.TryParse(userIdClaim, out var userId))
+                return null;
+
+            return await _context.Doctors
+                .FirstOrDefaultAsync(d => d.UserId == userId);
+        }
+
+        // ==============================
+        // GET: api/schedule/my-schedules
+        // ==============================
         [HttpGet("my-schedules")]
         public async Task<IActionResult> GetMySchedules()
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-                var doctor = await _context.Doctors
-                    .FirstOrDefaultAsync(d => d.UserId == userId);
-
+                var doctor = await GetCurrentDoctor();
                 if (doctor == null)
-                    return BadRequest("Doctor not found");
+                    return Unauthorized("Doctor not found from token");
 
                 var schedules = await _context.DoctorSchedules
                     .Where(s => s.DoctorId == doctor.Id)
+                    .OrderBy(s => s.DayOfWeek)
+                    .ThenBy(s => s.StartTime)
                     .ToListAsync();
 
                 return Ok(schedules);
@@ -50,25 +69,27 @@ namespace HealthEco.API.Controllers
             }
         }
 
-        // POST api/schedule
+        // ==============================
+        // POST: api/schedule
+        // ==============================
         [HttpPost]
-        public async Task<IActionResult> CreateSchedule([FromBody] DoctorScheduleRequest request)
+        public async Task<IActionResult> CreateSchedule(
+            [FromBody] DoctorScheduleRequest request)
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-                var doctor = await _context.Doctors
-                    .FirstOrDefaultAsync(d => d.UserId == userId);
-
+                var doctor = await GetCurrentDoctor();
                 if (doctor == null)
-                    return BadRequest("Doctor not found");
+                    return Unauthorized("Doctor not found from token");
 
                 if (!TimeSpan.TryParse(request.StartTime, out var start))
                     return BadRequest("Invalid StartTime");
 
                 if (!TimeSpan.TryParse(request.EndTime, out var end))
                     return BadRequest("Invalid EndTime");
+
+                if (end <= start)
+                    return BadRequest("EndTime must be after StartTime");
 
                 if (!DateTime.TryParse(request.ValidFrom, out var validFrom))
                     return BadRequest("Invalid ValidFrom");
@@ -85,7 +106,7 @@ namespace HealthEco.API.Controllers
                 var schedule = new DoctorSchedule
                 {
                     DoctorId = doctor.Id,
-                    FacilityId = request.FacilityId == 0 ? 1 : request.FacilityId,
+                    FacilityId = request.FacilityId > 0 ? request.FacilityId : 1,
                     DayOfWeek = (int)request.DayOfWeek,
                     StartTime = start,
                     EndTime = end,
