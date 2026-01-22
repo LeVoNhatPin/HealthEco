@@ -5,7 +5,6 @@ import { scheduleService } from "@/services/schedule.service";
 
 type Schedule = {
     id: number;
-    facilityId: number | null;
     dayOfWeek: number;
     startTime: string;
     endTime: string;
@@ -18,7 +17,6 @@ export default function DoctorSchedulePage() {
     const [loading, setLoading] = useState(true);
 
     const [formData, setFormData] = useState({
-        facilityId: "",
         dayOfWeek: "1",
         startTime: "08:00",
         endTime: "17:00",
@@ -59,10 +57,6 @@ export default function DoctorSchedulePage() {
         e.preventDefault();
 
         const payload = {
-            facilityId: formData.facilityId
-                ? Number(formData.facilityId)
-                : 1, // default facility
-
             dayOfWeek: Number(formData.dayOfWeek),
             startTime: formData.startTime,
             endTime: formData.endTime,
@@ -87,7 +81,6 @@ export default function DoctorSchedulePage() {
 
     const resetForm = () => {
         setFormData({
-            facilityId: "",
             dayOfWeek: "1",
             startTime: "08:00",
             endTime: "17:00",
@@ -142,21 +135,6 @@ export default function DoctorSchedulePage() {
                     <h2 className="font-semibold mb-4">Tạo lịch trực</h2>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <select
-                            className="w-full border px-3 py-2 rounded"
-                            value={formData.facilityId}
-                            onChange={(e) =>
-                                setFormData({
-                                    ...formData,
-                                    facilityId: e.target.value,
-                                })
-                            }
-                        >
-                            <option value="">— Không chọn cơ sở —</option>
-                            <option value="1">Phòng khám 1</option>
-                            <option value="2">Phòng khám 2</option>
-                        </select>
-
                         <select
                             className="w-full border px-3 py-2 rounded"
                             value={formData.dayOfWeek}
@@ -279,11 +257,6 @@ export default function DoctorSchedulePage() {
                             <tbody>
                                 {schedules.map((s) => (
                                     <tr key={s.id} className="border-t">
-                                        <td className="p-2">
-                                            {s.facilityId
-                                                ? `CS ${s.facilityId}`
-                                                : "—"}
-                                        </td>
                                         <td className="p-2">
                                             {dayLabel(s.dayOfWeek)}
                                         </td>
