@@ -10,7 +10,7 @@ using System.Security.Claims;
 namespace HealthEco.API.Controllers
 {
     [ApiController]
-    [Route("api/schedule")]
+    [Route("schedule")]
     [Authorize(Roles = "Doctor")]
     public class ScheduleController : ControllerBase
     {
