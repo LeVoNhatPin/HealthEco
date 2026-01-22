@@ -124,36 +124,44 @@ namespace HealthEco.API.Controllers
             [FromQuery] string date // yyyy-MM-dd
         )
         {
+            // 1️⃣ Parse ngày
             if (!DateOnly.TryParse(date, out var selectedDate))
-                return BadRequest("Invalid date format");
+                return BadRequest("Invalid date format. Use yyyy-MM-dd");
 
+            // 2️⃣ Convert sang DateTime UTC (00:00)
+            var selectedDateTimeUtc = DateTime.SpecifyKind(
+                selectedDate.ToDateTime(TimeOnly.MinValue),
+                DateTimeKind.Utc
+            );
+
+            // 3️⃣ Lấy thứ trong tuần (0–6, Chủ nhật = 0)
             var dayOfWeek = (int)selectedDate.DayOfWeek;
 
-            // 1️⃣ Lấy lịch trực hợp lệ của bác sĩ
+            // 4️⃣ Lấy lịch trực hợp lệ
             var schedules = await _context.DoctorSchedule
                 .Where(s =>
                     s.DoctorId == doctorId &&
                     s.DayOfWeek == dayOfWeek &&
                     s.IsActive &&
-                    s.ValidFrom <= selectedDate.ToDateTime(TimeOnly.MinValue) &&
-                    (s.ValidTo == null || s.ValidTo >= selectedDate.ToDateTime(TimeOnly.MinValue))
+                    s.ValidFrom <= selectedDateTimeUtc &&
+                    (s.ValidTo == null || s.ValidTo >= selectedDateTimeUtc)
                 )
                 .AsNoTracking()
                 .ToListAsync();
 
             var result = new List<AvailableSlotResponse>();
 
+            // 5️⃣ Sinh slot theo SlotDuration
             foreach (var schedule in schedules)
             {
                 var slotStart = schedule.StartTime;
-                var slotEndLimit = schedule.EndTime;
                 var slotDuration = TimeSpan.FromMinutes(schedule.SlotDuration);
 
-                while (slotStart + slotDuration <= slotEndLimit)
+                while (slotStart + slotDuration <= schedule.EndTime)
                 {
                     var slotEnd = slotStart + slotDuration;
 
-                    // 2️⃣ Check slot đã bị đặt chưa
+                    // 6️⃣ Đếm số lịch đã đặt trong slot này
                     var bookedCount = await _context.Appointments.CountAsync(a =>
                         a.DoctorId == doctorId &&
                         a.AppointmentDate == selectedDate &&
@@ -173,7 +181,6 @@ namespace HealthEco.API.Controllers
 
             return Ok(result);
         }
-
 
 
         // ==============================
