@@ -1,4 +1,5 @@
-﻿using HealthEco.Core.DTOs.Schedule;
+﻿// HealthEco.API/Controllers/ScheduleController.cs
+using HealthEco.Core.DTOs.Schedule;
 using HealthEco.Core.Entities;
 using HealthEco.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ namespace HealthEco.API.Controllers
 {
     [ApiController]
     [Route("api/v1/schedule")]
-    [Authorize(Roles = "Doctor")]
+    [AllowAnonymous]
     public class ScheduleController : BaseController
     {
         private readonly ApplicationDbContext _context;
@@ -23,12 +24,14 @@ namespace HealthEco.API.Controllers
         }
 
         // ==============================
-        // HELPER: LẤY DOCTOR TỪ JWT
+        // HELPER: LẤY DOCTOR TỪ JWT (ĐÃ FIX)
         // ==============================
         private async Task<Doctor?> GetCurrentDoctor()
         {
-            var userId = GetUserId();
-            if (userId == 0) return null;
+            var userId = GetUserId(); // ✅ DÙNG CHUNG VỚI USER CONTROLLER
+
+            if (userId == 0)
+                return null;
 
             return await _context.Doctors
                 .AsNoTracking()
@@ -41,17 +44,25 @@ namespace HealthEco.API.Controllers
         [HttpGet("my-schedules")]
         public async Task<IActionResult> GetMySchedules()
         {
-            var doctor = await GetCurrentDoctor();
-            if (doctor == null)
-                return Unauthorized("Doctor not found from token");
+            try
+            {
+                var doctor = await GetCurrentDoctor();
+                if (doctor == null)
+                    return Unauthorized("Doctor not found from token");
 
-            var schedules = await _context.DoctorSchedules
-                .Where(s => s.DoctorId == doctor.Id)
-                .OrderBy(s => s.DayOfWeek)
-                .ThenBy(s => s.StartTime)
-                .ToListAsync();
+                var schedules = await _context.DoctorSchedules
+                    .Where(s => s.DoctorId == doctor.Id)
+                    .OrderBy(s => s.DayOfWeek)
+                    .ThenBy(s => s.StartTime)
+                    .ToListAsync();
 
-            return Ok(schedules);
+                return Ok(schedules);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetMySchedules failed");
+                return StatusCode(500, "Internal server error");
+            }
         }
 
         // ==============================
@@ -67,7 +78,6 @@ namespace HealthEco.API.Controllers
                 if (doctor == null)
                     return Unauthorized("Doctor not found from token");
 
-                // ===== VALIDATION =====
                 if (!TimeSpan.TryParse(request.StartTime, out var start))
                     return BadRequest("Invalid StartTime");
 
@@ -89,12 +99,11 @@ namespace HealthEco.API.Controllers
                     validTo = parsedValidTo;
                 }
 
-                // ===== CREATE ENTITY =====
                 var schedule = new DoctorSchedule
                 {
                     DoctorId = doctor.Id,
                     FacilityId = request.FacilityId > 0 ? request.FacilityId : 1,
-                    DayOfWeek = request.DayOfWeek,
+                    DayOfWeek = (int)request.DayOfWeek,
                     StartTime = start,
                     EndTime = end,
                     SlotDuration = request.SlotDuration,
@@ -112,7 +121,7 @@ namespace HealthEco.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "CreateSchedule failed");
+                _logger.LogError(ex, "CreateSchedule failed");
                 return StatusCode(500, new
                 {
                     error = "CREATE_SCHEDULE_FAILED",
