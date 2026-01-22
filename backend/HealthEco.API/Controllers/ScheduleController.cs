@@ -114,6 +114,20 @@ namespace HealthEco.API.Controllers
             return Ok(schedule);
         }
 
+        [HttpGet("doctor/{doctorId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetDoctorSchedules(int doctorId)
+        {
+            var schedules = await _context.DoctorSchedule
+                .Where(s => s.DoctorId == doctorId && s.IsActive)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return Ok(schedules);
+        }
+
+
+
         // ==============================
         // DELETE: api/v1/schedule/{id}
         // ==============================
