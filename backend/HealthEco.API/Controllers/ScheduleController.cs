@@ -5,48 +5,41 @@ using HealthEco.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace HealthEco.API.Controllers
 {
     [ApiController]
-    [Route("schedule")]
+    [Route("api/v1/schedule")]
     [Authorize(Roles = "Doctor")]
-    public class ScheduleController : ControllerBase
+    public class ScheduleController : BaseController
     {
         private readonly ApplicationDbContext _context;
-        private readonly ILogger<ScheduleController> _logger;
 
         public ScheduleController(
             ApplicationDbContext context,
-            ILogger<ScheduleController> logger)
+            ILogger<ScheduleController> logger
+        ) : base(logger)
         {
             _context = context;
-            _logger = logger;
         }
 
         // ==============================
-        // HELPER: LẤY DOCTOR TỪ JWT
+        // HELPER: LẤY DOCTOR TỪ JWT (ĐÃ FIX)
         // ==============================
         private async Task<Doctor?> GetCurrentDoctor()
         {
-            var userIdClaim = User.FindFirst(
-    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
-)?.Value;
+            var userId = GetUserId(); // ✅ DÙNG CHUNG VỚI USER CONTROLLER
 
-
-            if (string.IsNullOrEmpty(userIdClaim))
-                return null;
-
-            if (!int.TryParse(userIdClaim, out var userId))
+            if (userId == 0)
                 return null;
 
             return await _context.Doctors
+                .AsNoTracking()
                 .FirstOrDefaultAsync(d => d.UserId == userId);
         }
 
         // ==============================
-        // GET: api/schedule/my-schedules
+        // GET: api/v1/schedule/my-schedules
         // ==============================
         [HttpGet("my-schedules")]
         public async Task<IActionResult> GetMySchedules()
@@ -73,7 +66,7 @@ namespace HealthEco.API.Controllers
         }
 
         // ==============================
-        // POST: api/schedule
+        // POST: api/v1/schedule
         // ==============================
         [HttpPost]
         public async Task<IActionResult> CreateSchedule(
