@@ -60,69 +60,61 @@ namespace HealthEco.API.Controllers
         }
 
         [HttpGet("doctor/{doctorId}/slots")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetDoctorAvailableSlots(
     int doctorId,
-    [FromQuery] DateTime date)
+    [FromQuery] DateTime date
+)
         {
-            // ép date về UTC (00:00)
-            var targetDate = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
+            // ép date về UTC + bỏ time
+            var targetDateUtc = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
+            var targetDateOnly = DateOnly.FromDateTime(targetDateUtc);
 
-            // 1. Lấy lịch trực trong ngày
+            int dayOfWeek = (int)targetDateUtc.DayOfWeek;
+            if (dayOfWeek == 0) dayOfWeek = 7;
+
             var schedules = await _context.DoctorSchedule
                 .Where(s =>
                     s.DoctorId == doctorId &&
-                    s.DayOfWeek == (int)targetDate.DayOfWeek &&
-                    s.ValidFrom <= targetDate &&
-                    s.ValidTo >= targetDate
+                    s.DayOfWeek == dayOfWeek &&
+                    s.IsActive &&
+                    s.ValidFrom <= targetDateUtc &&
+                    (s.ValidTo == null || s.ValidTo >= targetDateUtc)
                 )
+                .AsNoTracking()
                 .ToListAsync();
 
-            if (!schedules.Any())
-                return Ok(new List<object>());
-
-            // 2. Lấy danh sách lịch hẹn đã đặt
-            var targetDateOnly = DateOnly.FromDateTime(targetDate);
-
-            var appointments = await _context.Appointments
-                .Where(a =>
-                    a.DoctorId == doctorId &&
-                    a.AppointmentDate == targetDateOnly &&
-                    a.Status != AppointmentStatus.Cancelled
-                )
-                .ToListAsync();
-
-            var result = new List<object>();
+            var slots = new List<DoctorSlotDto>();
 
             foreach (var schedule in schedules)
             {
-                var start = schedule.StartTime;
-                var end = schedule.EndTime;
-                var slotMinutes = schedule.SlotDuration;
+                var slotStart = schedule.StartTime;
+                var slotDuration = TimeSpan.FromMinutes(schedule.SlotDuration);
 
-                while (start.Add(TimeSpan.FromMinutes(slotMinutes)) <= end)
+                while (slotStart + slotDuration <= schedule.EndTime)
                 {
-                    var slotEnd = start.Add(TimeSpan.FromMinutes(slotMinutes));
+                    var slotEnd = slotStart + slotDuration;
 
-                    // 3. Đếm số bệnh nhân đã đặt slot này
-                    var bookedCount = appointments.Count(a =>
-                        a.StartTime == TimeOnly.FromTimeSpan(start)
-
+                    // ✅ FIX CHÍNH Ở ĐÂY – KHÔNG ScheduleId
+                    var bookedCount = await _context.Appointments.CountAsync(a =>
+                        a.DoctorId == doctorId &&
+                        a.AppointmentDate == targetDateOnly &&
+                        a.StartTime == TimeOnly.FromTimeSpan(slotStart)
                     );
 
-                    if (bookedCount < schedule.MaxPatientsPerSlot)
+                    slots.Add(new DoctorSlotDto
                     {
-                        result.Add(new
-                        {
-                            startTime = start.ToString(@"hh\:mm"),
-                            endTime = slotEnd.ToString(@"hh\:mm")
-                        });
-                    }
+                        StartTime = slotStart.ToString(@"hh\:mm"),
+                        EndTime = slotEnd.ToString(@"hh\:mm"),
+                        IsAvailable = true
+                    });
 
-                    start = slotEnd;
+
+                    slotStart = slotEnd;
                 }
             }
 
-            return Ok(result);
+            return Ok(slots);
         }
 
         // ==============================
