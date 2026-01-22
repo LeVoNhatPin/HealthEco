@@ -88,29 +88,29 @@ namespace HealthEco.API.Controllers
 
             foreach (var schedule in schedules)
             {
-                var slotStart = schedule.StartTime;
+                var current = schedule.StartTime;
                 var slotDuration = TimeSpan.FromMinutes(schedule.SlotDuration);
 
-                while (slotStart + slotDuration <= schedule.EndTime)
+                while (current + slotDuration <= schedule.EndTime)
                 {
-                    var slotEnd = slotStart + slotDuration;
+                    var slotEnd = current + slotDuration;
 
-                    // ✅ FIX CHÍNH Ở ĐÂY – KHÔNG ScheduleId
+                    // 🔥 Đếm số lịch hẹn đã đặt slot này
                     var bookedCount = await _context.Appointments.CountAsync(a =>
                         a.DoctorId == doctorId &&
-                        a.AppointmentDate == targetDateOnly &&
-                        a.StartTime == TimeOnly.FromTimeSpan(slotStart)
+                        a.AppointmentDate == DateOnly.FromDateTime(date) &&
+                        a.StartTime == TimeOnly.FromTimeSpan(current) &&
+                        a.Status != AppointmentStatus.Cancelled
                     );
 
                     slots.Add(new DoctorSlotDto
                     {
-                        StartTime = slotStart.ToString(@"hh\:mm"),
+                        StartTime = current.ToString(@"hh\:mm"),
                         EndTime = slotEnd.ToString(@"hh\:mm"),
-                        IsAvailable = true
+                        IsAvailable = bookedCount < schedule.MaxPatientsPerSlot
                     });
 
-
-                    slotStart = slotEnd;
+                    current = slotEnd;
                 }
             }
 
