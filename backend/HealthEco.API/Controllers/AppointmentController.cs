@@ -24,15 +24,16 @@ namespace HealthEco.API.Controllers
 
         // POST: api/appointment
         [HttpPost]
-        [AllowAnonymous]
+        [Authorize(Roles = "Patient")]
         public async Task<IActionResult> BookAppointment([FromBody] AppointmentRequest request)
         {
             try
             {
                 var patientId = GetUserId();
-                if (patientId == 0) return Unauthorized(new { message = "Unauthorized" });
+                if (patientId == 0)
+                    return Unauthorized();
 
-                // Parse date and time
+                // Parse date & time
                 if (!DateOnly.TryParse(request.AppointmentDate, out var appointmentDate) ||
                     !TimeOnly.TryParse(request.StartTime, out var startTime))
                 {
@@ -41,66 +42,51 @@ namespace HealthEco.API.Controllers
 
                 // Check doctor
                 var doctor = await _context.Doctors
-                    .Include(d => d.User)
                     .FirstOrDefaultAsync(d => d.Id == request.DoctorId && d.IsVerified);
 
                 if (doctor == null)
-                {
                     return BadRequest(new { message = "Không tìm thấy bác sĩ" });
-                }
 
-                
-
-                // Check schedule availability
+                // Check schedule
                 var dayOfWeek = (int)appointmentDate.DayOfWeek;
 
                 var schedule = await _context.DoctorSchedule
-                    .FirstOrDefaultAsync(s => s.DoctorId == request.DoctorId &&
-                                              s.DayOfWeek == dayOfWeek &&
-                                              s.IsActive &&
-                                              appointmentDate >= DateOnly.FromDateTime(s.ValidFrom) &&
-                                              (s.ValidTo == null || appointmentDate <= DateOnly.FromDateTime(s.ValidTo.Value)));
+                    .FirstOrDefaultAsync(s =>
+                        s.DoctorId == request.DoctorId &&
+                        s.DayOfWeek == dayOfWeek &&
+                        s.IsActive &&
+                        appointmentDate >= DateOnly.FromDateTime(s.ValidFrom) &&
+                        (s.ValidTo == null || appointmentDate <= DateOnly.FromDateTime(s.ValidTo.Value)));
 
                 if (schedule == null)
-                {
-                    return BadRequest(new { message = "Bác sĩ không có lịch trực vào ngày này" });
-                }
+                    return BadRequest(new { message = "Bác sĩ không có lịch ngày này" });
 
                 var scheduleStart = TimeOnly.FromTimeSpan(schedule.StartTime);
                 var scheduleEnd = TimeOnly.FromTimeSpan(schedule.EndTime);
 
                 if (startTime < scheduleStart || startTime >= scheduleEnd)
-                {
-                    return BadRequest(new { message = "Thời gian không nằm trong khung giờ làm việc" });
-                }
+                    return BadRequest(new { message = "Ngoài khung giờ làm việc" });
 
+                // Check slot full
+                var count = await _context.Appointments.CountAsync(a =>
+                    a.DoctorId == request.DoctorId &&
+                    a.AppointmentDate == appointmentDate &&
+                    a.StartTime == startTime &&
+                    a.Status != AppointmentStatus.Cancelled);
 
-                // Check if slot is full
-                var existingAppointments = await _context.Appointments
-                    .CountAsync(a => a.DoctorId == request.DoctorId &&
-                                     a.AppointmentDate == appointmentDate &&
-                                     a.StartTime == startTime &&
-                                     a.Status != AppointmentStatus.Cancelled);
-
-                if (existingAppointments >= schedule.MaxPatientsPerSlot)
-                {
-                    return BadRequest(new { message = "Slot này đã đầy, vui lòng chọn slot khác" });
-                }
-
-                // Generate appointment code
-                var appointmentCode = $"APT-{DateTime.Now:yyyyMMddHHmmss}-{patientId:00000}";
+                if (count >= schedule.MaxPatientsPerSlot)
+                    return BadRequest(new { message = "Slot đã đầy" });
 
                 var appointment = new Appointment
                 {
-                    AppointmentCode = appointmentCode,
+                    AppointmentCode = $"APT-{DateTime.UtcNow:yyyyMMddHHmmss}-{patientId}",
                     PatientId = patientId,
                     DoctorId = request.DoctorId,
                     AppointmentDate = appointmentDate,
                     StartTime = startTime,
                     EndTime = startTime.AddMinutes(schedule.SlotDuration),
-                    AppointmentType = "IN_CLINIC",
                     Status = AppointmentStatus.Pending,
-                    Symptoms = request.Symptoms ?? string.Empty,
+                    Symptoms = request.Symptoms,
                     ConsultationFee = doctor.ConsultationFee,
                     TotalAmount = doctor.ConsultationFee,
                     PaymentStatus = PaymentStatus.Pending,
@@ -118,23 +104,19 @@ namespace HealthEco.API.Controllers
                     {
                         appointment.Id,
                         appointment.AppointmentCode,
-                        appointment.PatientId,
-                        appointment.DoctorId,
-                        AppointmentDate = appointment.AppointmentDate.ToString("yyyy-MM-dd"),
-                        StartTime = appointment.StartTime.ToString(@"hh\:mm"),
-                        EndTime = appointment.EndTime.ToString(@"hh\:mm"),
-                        Status = appointment.Status.ToString(),
-                        appointment.Symptoms,
-                        appointment.ConsultationFee
+                        Date = appointment.AppointmentDate.ToString("yyyy-MM-dd"),
+                        Start = appointment.StartTime.ToString(@"hh\:mm"),
+                        End = appointment.EndTime.ToString(@"hh\:mm")
                     }
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error booking appointment");
+                _logger.LogError(ex, "BookAppointment error");
                 return StatusCode(500, new { message = "Lỗi server khi đặt lịch" });
             }
         }
+
 
         // GET: api/appointment/my-appointments
         [HttpGet("my-appointments")]
