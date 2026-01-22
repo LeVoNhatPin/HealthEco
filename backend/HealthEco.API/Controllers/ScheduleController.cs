@@ -74,6 +74,18 @@ namespace HealthEco.API.Controllers
                     !TimeOnly.TryParse(request.EndTime, out var end))
                     return BadRequest("Invalid time");
 
+                if (!DateTime.TryParse(request.ValidFrom, out var validFrom))
+                    return BadRequest("Invalid ValidFrom");
+
+                DateTime? validTo = null;
+                if (!string.IsNullOrEmpty(request.ValidTo))
+                {
+                    if (!DateTime.TryParse(request.ValidTo, out var parsedValidTo))
+                        return BadRequest("Invalid ValidTo");
+                    validTo = parsedValidTo;
+                }
+
+
                 var schedule = new DoctorSchedule
                 {
                     DoctorId = doctor.Id,
@@ -83,8 +95,8 @@ namespace HealthEco.API.Controllers
                     EndTime = end,
                     SlotDuration = request.SlotDuration,
                     MaxPatientsPerSlot = request.MaxPatientsPerSlot,
-                    ValidFrom = DateTime.Parse(request.ValidFrom),
-                    ValidTo = string.IsNullOrEmpty(request.ValidTo) ? null : DateTime.Parse(request.ValidTo),
+                    ValidFrom = validFrom,
+                    ValidTo = validTo,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -96,8 +108,16 @@ namespace HealthEco.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "CreateSchedule failed");
-                return StatusCode(500, "Server error");
+                _logger.LogError(ex,
+                    "CreateSchedule failed | Message: {Message} | StackTrace: {StackTrace}",
+                    ex.Message,
+                    ex.StackTrace);
+
+                return StatusCode(500, new
+                {
+                    error = "CREATE_SCHEDULE_FAILED",
+                    detail = ex.Message
+                });
             }
         }
     }
