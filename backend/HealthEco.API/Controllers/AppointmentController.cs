@@ -74,7 +74,6 @@ namespace HealthEco.API.Controllers
 
                 var schedule = await _context.DoctorSchedules
                     .FirstOrDefaultAsync(s => s.DoctorId == request.DoctorId &&
-                                              s.FacilityId == request.FacilityId &&
                                               s.DayOfWeek == dayOfWeek &&
                                               s.IsActive &&
                                               appointmentDate >= DateOnly.FromDateTime(s.ValidFrom) &&

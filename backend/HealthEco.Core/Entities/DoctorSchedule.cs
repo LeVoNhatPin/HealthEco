@@ -6,12 +6,11 @@ namespace HealthEco.Core.Entities
         public int DoctorId { get; set; }
         public Doctor Doctor { get; set; } = null!;
 
-        // ✅ Facility OPTIONAL
-        public int FacilityId { get; set; } = 1; // default
-        public MedicalFacility? Facility { get; set; }
+        // ❌ BỎ TOÀN BỘ FACILITY
+        // public int FacilityId { get; set; }
+        // public MedicalFacility? Facility { get; set; }
 
-        // 0 = Sunday, 1 = Monday, ...
-        public int DayOfWeek { get; set; }
+        public int DayOfWeek { get; set; } // 0-6
 
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
