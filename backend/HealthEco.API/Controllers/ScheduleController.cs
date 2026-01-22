@@ -30,7 +30,10 @@ namespace HealthEco.API.Controllers
         // ==============================
         private async Task<Doctor?> GetCurrentDoctor()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = User.FindFirst(
+    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+)?.Value;
+
 
             if (string.IsNullOrEmpty(userIdClaim))
                 return null;
