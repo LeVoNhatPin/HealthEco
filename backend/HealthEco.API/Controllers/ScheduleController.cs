@@ -97,11 +97,16 @@ namespace HealthEco.API.Controllers
                 EndTime = end,
                 SlotDuration = request.SlotDuration,
                 MaxPatientsPerSlot = request.MaxPatientsPerSlot,
-                ValidFrom = validFrom,
-                ValidTo = validTo,
+
+                ValidFrom = DateTime.SpecifyKind(validFrom, DateTimeKind.Utc),
+                ValidTo = validTo.HasValue
+         ? DateTime.SpecifyKind(validTo.Value, DateTimeKind.Utc)
+         : null,
+
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
+
 
             _context.DoctorSchedules.Add(schedule);
             await _context.SaveChangesAsync();
