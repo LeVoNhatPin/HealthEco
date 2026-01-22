@@ -59,58 +59,54 @@ namespace HealthEco.API.Controllers
         }
 
         [HttpGet("doctor/{doctorId}/slots")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetDoctorAvailableSlots(
-            int doctorId,
-            [FromQuery] DateTime date
-        )
+    int doctorId,
+    [FromQuery] DateTime date
+)
         {
-            int dayOfWeek = (int)date.DayOfWeek;
-            if (dayOfWeek == 0) dayOfWeek = 7;
+            // 1️⃣ ÉP date sang UTC (CỰC KỲ QUAN TRỌNG)
+            var selectedDateUtc = DateTime.SpecifyKind(
+                date.Date,
+                DateTimeKind.Utc
+            );
 
+            // 2️⃣ Thứ trong tuần
+            var dayOfWeek = (int)selectedDateUtc.DayOfWeek;
+
+            // 3️⃣ Query lịch trực
             var schedules = await _context.DoctorSchedule
                 .Where(s =>
                     s.DoctorId == doctorId &&
                     s.DayOfWeek == dayOfWeek &&
                     s.IsActive &&
-                    s.ValidFrom.Date <= date.Date &&
-                    (s.ValidTo == null || s.ValidTo.Value.Date >= date.Date)
+                    s.ValidFrom <= selectedDateUtc &&
+                    (s.ValidTo == null || s.ValidTo >= selectedDateUtc)
                 )
                 .AsNoTracking()
                 .ToListAsync();
 
-            var slots = new List<DoctorSlotDto>();
+            var result = new List<object>();
 
             foreach (var schedule in schedules)
             {
-                var current = schedule.StartTime;
-                var duration = TimeSpan.FromMinutes(schedule.SlotDuration);
+                var slotStart = schedule.StartTime;
+                var slotDuration = TimeSpan.FromMinutes(schedule.SlotDuration);
 
-                while (current + duration <= schedule.EndTime)
+                while (slotStart + slotDuration <= schedule.EndTime)
                 {
-                    var slotEnd = current + duration;
-
-                    // 🔥 ĐẾM SỐ LƯỢNG APPOINTMENT ĐÃ ĐẶT SLOT NÀY
-                    var bookedCount = await _context.Appointments.CountAsync(a =>
-                        a.DoctorId == doctorId &&
-                        a.AppointmentDate == DateOnly.FromDateTime(date) &&
-                        a.StartTime == TimeOnly.FromTimeSpan(current)
-                    );
-
-                    slots.Add(new DoctorSlotDto
+                    result.Add(new
                     {
-                        Date = date.Date,
-                        StartTime = current,
-                        EndTime = slotEnd,
-                        IsAvailable = bookedCount < schedule.MaxPatientsPerSlot
+                        StartTime = slotStart.ToString(@"hh\:mm"),
+                        EndTime = (slotStart + slotDuration).ToString(@"hh\:mm")
                     });
 
-                    current = slotEnd;
+                    slotStart += slotDuration;
                 }
             }
 
-            return Ok(slots);
+            return Ok(result);
         }
-
 
 
         // ==============================
