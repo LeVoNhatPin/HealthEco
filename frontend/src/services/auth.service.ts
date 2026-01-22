@@ -254,7 +254,7 @@ class AuthService {
 
     setTokens(token: string, refreshToken: string): void {
         if (typeof window !== "undefined") {
-            localStorage.setItem(this.tokenKey, token);
+            localStorage.setItem(this.tokenKey, token); 
             localStorage.setItem(this.refreshTokenKey, refreshToken);
         }
     }
