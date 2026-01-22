@@ -27,6 +27,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getRoleFromToken = (token: string): string | null => {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || null;
+    } catch {
+        return null;
+    }
+};
+
+
 export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) {
@@ -88,7 +98,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const response = await authService.login({ email, password });
 
             if (response.success && response.data) {
-                const userData = response.data.user;
+                const token = localStorage.getItem("healtheco_token");
+                const role = token ? getRoleFromToken(token) ?? 'Patient' : 'Patient';
+
+                const userData = {
+                    ...response.data.user,
+                    role: role, // 🔥 GÁN ROLE TỪ JWT
+                };
+
                 setUser(userData);
                 toast.success(response.message || 'Đăng nhập thành công');
 
