@@ -12,7 +12,7 @@ namespace HealthEco.Core.Entities
         // public int FacilityId { get; set; }
         // public MedicalFacility? Facility { get; set; }
 
-        [Column("dateofweek")]
+        [Column("dayofweek")]
 
         public int DayOfWeek { get; set; } // 0-6
 
