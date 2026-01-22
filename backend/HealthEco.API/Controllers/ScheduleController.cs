@@ -85,7 +85,7 @@ namespace HealthEco.API.Controllers
                 var schedule = new DoctorSchedule
                 {
                     DoctorId = doctor.Id,
-                    FacilityId = null, // ✅ KHÔNG DÙNG FACILITY
+                    FacilityId = request.FacilityId == 0 ? 1 : request.FacilityId,
                     DayOfWeek = (int)request.DayOfWeek,
                     StartTime = start,
                     EndTime = end,

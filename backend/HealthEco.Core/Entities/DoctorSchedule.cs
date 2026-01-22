@@ -7,7 +7,7 @@ namespace HealthEco.Core.Entities
         public Doctor Doctor { get; set; } = null!;
 
         // ✅ Facility OPTIONAL
-        public int? FacilityId { get; set; }
+        public int FacilityId { get; set; } = 1; // default
         public MedicalFacility? Facility { get; set; }
 
         // 0 = Sunday, 1 = Monday, ...
