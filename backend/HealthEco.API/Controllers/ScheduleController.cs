@@ -11,7 +11,7 @@ namespace HealthEco.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [AllowAnonymous]
     public class ScheduleController : BaseController
     {
         private readonly ApplicationDbContext _context;
@@ -24,13 +24,20 @@ namespace HealthEco.API.Controllers
 
         // POST: api/schedule
         [HttpPost]
-        [Authorize]
+        [AllowAnonymous]
         public async Task<IActionResult> CreateSchedule([FromBody] DoctorScheduleRequest request)
         {
             try
             {
-                var doctorId = await GetCurrentDoctorId();
-                if (doctorId == 0) return Unauthorized(new { message = "Unauthorized" });
+                var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+                if (string.IsNullOrEmpty(role) || role != "Doctor")
+                {
+                    return Forbid("Chỉ bác sĩ mới được tạo lịch trực");
+                }
+
+
+                var doctorId = request.DoctorId;
 
                 // Validate time
                 if (!TimeOnly.TryParse(request.StartTime, out var startTime) ||
