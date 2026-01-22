@@ -72,7 +72,7 @@ namespace HealthEco.API.Controllers
                 // Check schedule availability
                 var dayOfWeek = (int)appointmentDate.DayOfWeek;
 
-                var schedule = await _context.DoctorSchedules
+                var schedule = await _context.DoctorSchedule
                     .FirstOrDefaultAsync(s => s.DoctorId == request.DoctorId &&
                                               s.DayOfWeek == dayOfWeek &&
                                               s.IsActive &&

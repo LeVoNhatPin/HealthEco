@@ -47,7 +47,7 @@ namespace HealthEco.API.Controllers
             if (doctor == null)
                 return Unauthorized("Doctor not found from token");
 
-            var schedules = await _context.DoctorSchedules
+            var schedules = await _context.DoctorSchedule
                 .Where(s => s.DoctorId == doctor.Id)
                 .OrderBy(s => s.DayOfWeek)
                 .ThenBy(s => s.StartTime)
@@ -108,7 +108,7 @@ namespace HealthEco.API.Controllers
             };
 
 
-            _context.DoctorSchedules.Add(schedule);
+            _context.DoctorSchedule.Add(schedule);
             await _context.SaveChangesAsync();
 
             return Ok(schedule);
