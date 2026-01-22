@@ -24,7 +24,7 @@ namespace HealthEco.API.Controllers
 
         // POST: api/appointment
         [HttpPost]
-        [Authorize(Roles = "Patient")]
+        [AllowAnonymous]
         public async Task<IActionResult> BookAppointment([FromBody] AppointmentRequest request)
         {
             try
@@ -49,25 +49,7 @@ namespace HealthEco.API.Controllers
                     return BadRequest(new { message = "Không tìm thấy bác sĩ" });
                 }
 
-                // Check facility
-                var facility = await _context.MedicalFacilities
-                    .FirstOrDefaultAsync(f => f.Id == request.FacilityId && f.IsActive);
-
-                if (facility == null)
-                {
-                    return BadRequest(new { message = "Không tìm thấy cơ sở y tế" });
-                }
-
-                // Check doctor works at this facility
-                var doctorFacility = await _context.DoctorFacilityWorks
-                    .FirstOrDefaultAsync(df => df.DoctorId == request.DoctorId &&
-                                               df.FacilityId == request.FacilityId &&
-                                               df.Status == DoctorFacilityWorkStatus.Approved);
-
-                if (doctorFacility == null)
-                {
-                    return BadRequest(new { message = "Bác sĩ không làm việc tại cơ sở này" });
-                }
+                
 
                 // Check schedule availability
                 var dayOfWeek = (int)appointmentDate.DayOfWeek;
@@ -96,7 +78,6 @@ namespace HealthEco.API.Controllers
                 // Check if slot is full
                 var existingAppointments = await _context.Appointments
                     .CountAsync(a => a.DoctorId == request.DoctorId &&
-                                     a.FacilityId == request.FacilityId &&
                                      a.AppointmentDate == appointmentDate &&
                                      a.StartTime == startTime &&
                                      a.Status != AppointmentStatus.Cancelled);
@@ -114,7 +95,6 @@ namespace HealthEco.API.Controllers
                     AppointmentCode = appointmentCode,
                     PatientId = patientId,
                     DoctorId = request.DoctorId,
-                    FacilityId = request.FacilityId,
                     AppointmentDate = appointmentDate,
                     StartTime = startTime,
                     EndTime = startTime.AddMinutes(schedule.SlotDuration),
@@ -140,7 +120,6 @@ namespace HealthEco.API.Controllers
                         appointment.AppointmentCode,
                         appointment.PatientId,
                         appointment.DoctorId,
-                        appointment.FacilityId,
                         AppointmentDate = appointment.AppointmentDate.ToString("yyyy-MM-dd"),
                         StartTime = appointment.StartTime.ToString(@"hh\:mm"),
                         EndTime = appointment.EndTime.ToString(@"hh\:mm"),
@@ -176,7 +155,6 @@ namespace HealthEco.API.Controllers
                     query = _context.Appointments
                         .Include(a => a.Doctor)
                         .ThenInclude(d => d.User)
-                        .Include(a => a.Facility)
                         .Where(a => a.PatientId == userId);
                 }
                 else if (user.Role == UserRole.Doctor)
@@ -186,7 +164,6 @@ namespace HealthEco.API.Controllers
 
                     query = _context.Appointments
                         .Include(a => a.Patient)
-                        .Include(a => a.Facility)
                         .Where(a => a.DoctorId == doctor.Id);
                 }
                 else
@@ -211,10 +188,8 @@ namespace HealthEco.API.Controllers
                         a.AppointmentCode,
                         a.PatientId,
                         a.DoctorId,
-                        a.FacilityId,
                         PatientName = a.Patient.FullName,
                         DoctorName = a.Doctor.User.FullName,
-                        FacilityName = a.Facility.Name,
                         AppointmentDate = a.AppointmentDate.ToString("yyyy-MM-dd"),
                         StartTime = a.StartTime.ToString(@"hh\:mm"),
                         EndTime = a.EndTime.ToString(@"hh\:mm"),
@@ -305,7 +280,7 @@ namespace HealthEco.API.Controllers
 
         // DELETE: api/appointment/{id}
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Patient")]
+        [AllowAnonymous]
         public async Task<IActionResult> CancelAppointment(int id)
         {
             try
@@ -364,7 +339,7 @@ namespace HealthEco.API.Controllers
                     .Include(a => a.Patient)
                     .Include(a => a.Doctor)
                     .ThenInclude(d => d.User)
-                    .Include(a => a.Facility)
+                    
                     .FirstOrDefaultAsync(a => a.Id == id);
 
                 if (appointment == null)
@@ -401,8 +376,6 @@ namespace HealthEco.API.Controllers
                     PatientName = appointment.Patient.FullName,
                     appointment.DoctorId,
                     DoctorName = appointment.Doctor.User.FullName,
-                    appointment.FacilityId,
-                    FacilityName = appointment.Facility.Name,
                     AppointmentDate = appointment.AppointmentDate.ToString("yyyy-MM-dd"),
                     StartTime = appointment.StartTime.ToString(@"hh\:mm"),
                     EndTime = appointment.EndTime.ToString(@"hh\:mm"),

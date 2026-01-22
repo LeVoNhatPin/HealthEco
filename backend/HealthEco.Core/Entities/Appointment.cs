@@ -10,8 +10,6 @@ namespace HealthEco.Core.Entities
         public User Patient { get; set; } = null!;
         public int DoctorId { get; set; }
         public Doctor Doctor { get; set; } = null!;
-        public int FacilityId { get; set; }
-        public MedicalFacility Facility { get; set; } = null!;
         public DateOnly AppointmentDate { get; set; }
         public TimeOnly StartTime { get; set; }
         public TimeOnly EndTime { get; set; }
@@ -21,8 +19,5 @@ namespace HealthEco.Core.Entities
         public decimal ConsultationFee { get; set; }
         public decimal TotalAmount { get; set; }
         public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
-
-        public int? ScheduleId { get; set; }
-        public DoctorSchedule? Schedule { get; set; }
     }
 }

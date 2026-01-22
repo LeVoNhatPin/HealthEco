@@ -8,9 +8,6 @@ namespace HealthEco.Core.DTOs.Appointment
         public int DoctorId { get; set; }
 
         [Required]
-        public int FacilityId { get; set; }
-
-        [Required]
         public string AppointmentDate { get; set; } = string.Empty; // yyyy-MM-dd
 
         [Required]
