@@ -85,7 +85,7 @@ namespace HealthEco.API.Controllers
                     EndTime = end,
                     SlotDuration = request.SlotDuration,
                     MaxPatientsPerSlot = request.MaxPatientsPerSlot,
-                    ValidFrom = validFrom,
+                    ValidFrom = DateTime.UtcNow,
                     ValidTo = validTo,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
