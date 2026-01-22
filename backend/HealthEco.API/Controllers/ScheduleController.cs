@@ -70,9 +70,12 @@ namespace HealthEco.API.Controllers
                 if (doctor == null)
                     return BadRequest("Doctor not found");
 
-                if (!TimeOnly.TryParse(request.StartTime, out var start) ||
-                    !TimeOnly.TryParse(request.EndTime, out var end))
-                    return BadRequest("Invalid time");
+                if (!TimeSpan.TryParse(request.StartTime, out var start))
+                    return BadRequest("Invalid StartTime");
+
+                if (!TimeSpan.TryParse(request.EndTime, out var end))
+                    return BadRequest("Invalid EndTime");
+
 
                 if (!DateTime.TryParse(request.ValidFrom, out var validFrom))
                     return BadRequest("Invalid ValidFrom");
@@ -90,7 +93,7 @@ namespace HealthEco.API.Controllers
                 {
                     DoctorId = doctor.Id,
                     FacilityId = request.FacilityId,
-                    DayOfWeek = request.DayOfWeek,
+                    DayOfWeek = (int)request.DayOfWeek,
                     StartTime = start,
                     EndTime = end,
                     SlotDuration = request.SlotDuration,

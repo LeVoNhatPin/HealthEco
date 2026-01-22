@@ -9,9 +9,10 @@ namespace HealthEco.Core.Entities
         public int FacilityId { get; set; }
         public MedicalFacility Facility { get; set; } = null!;
 
-        public DayOfWeek DayOfWeek { get; set; } // 1-7 (Monday-Sunday)
-        public TimeOnly StartTime { get; set; }
-        public TimeOnly EndTime { get; set; }
+        public int DayOfWeek { get; set; }
+        public TimeSpan StartTime { get; set; }
+        public TimeSpan EndTime { get; set; }
+
         public int SlotDuration { get; set; } = 30; // minutes
         public int MaxPatientsPerSlot { get; set; } = 1;
         public bool IsActive { get; set; } = true;
