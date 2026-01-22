@@ -1,4 +1,6 @@
 ﻿// HealthEco.Core/Entities/DoctorSchedule.cs
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace HealthEco.Core.Entities
 {
     public class DoctorSchedule : BaseEntity
@@ -22,6 +24,11 @@ namespace HealthEco.Core.Entities
 
         public DateTime ValidFrom { get; set; }
         public DateTime? ValidTo { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("createdat")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("updatedat")]
+        public DateTime? UpdatedAt { get; set; }
     }
 }
