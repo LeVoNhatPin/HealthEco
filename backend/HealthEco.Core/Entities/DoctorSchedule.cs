@@ -45,7 +45,7 @@ namespace HealthEco.Core.Entities
         [Column("createdat")]
         public DateTime CreatedAt { get; set; }
 
-        [Column("updatedat")]
+        [Column("updateat")]
         public DateTime? UpdatedAt { get; set; }
     }
 }
