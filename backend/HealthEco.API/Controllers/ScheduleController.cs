@@ -113,5 +113,28 @@ namespace HealthEco.API.Controllers
 
             return Ok(schedule);
         }
+
+        // ==============================
+        // DELETE: api/v1/schedule/{id}
+        // ==============================
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteSchedule(int id)
+        {
+            var doctor = await GetCurrentDoctor();
+            if (doctor == null)
+                return Unauthorized("Doctor not found from token");
+
+            var schedule = await _context.DoctorSchedule
+                .FirstOrDefaultAsync(s => s.Id == id && s.DoctorId == doctor.Id);
+
+            if (schedule == null)
+                return NotFound("Schedule not found");
+
+            _context.DoctorSchedule.Remove(schedule);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Schedule deleted successfully" });
+        }
+
     }
 }
