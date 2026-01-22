@@ -24,7 +24,7 @@ namespace HealthEco.API.Controllers
 
         // POST: api/schedule
         [HttpPost]
-        [Authorize(Roles = "Doctor")]
+        [Authorize]
         public async Task<IActionResult> CreateSchedule([FromBody] DoctorScheduleRequest request)
         {
             try
