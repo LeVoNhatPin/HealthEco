@@ -82,6 +82,7 @@ namespace HealthEco.API.Controllers
                     AppointmentCode = $"APT-{DateTime.UtcNow:yyyyMMddHHmmss}-{patientId}",
                     PatientId = patientId,
                     DoctorId = request.DoctorId,
+                    FacilityId = 1,
                     AppointmentDate = appointmentDate,
                     StartTime = startTime,
                     EndTime = startTime.AddMinutes(schedule.SlotDuration),

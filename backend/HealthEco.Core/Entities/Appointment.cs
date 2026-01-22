@@ -5,6 +5,8 @@ namespace HealthEco.Core.Entities
 {
     public class Appointment : BaseEntity
     {
+        public int FacilityId { get; set; }
+
         public string AppointmentCode { get; set; } = null!;
         public int PatientId { get; set; }
         public User Patient { get; set; } = null!;
