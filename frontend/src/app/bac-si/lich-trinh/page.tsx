@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { scheduleService } from "@/services/schedule.service";
 
+type Schedule = {
+    id: number;
+    facilityId: number | null;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    slotDuration: number;
+    maxPatientsPerSlot: number;
+};
+
 export default function DoctorSchedulePage() {
-    const [schedules, setSchedules] = useState<any[]>([]);
+    const [schedules, setSchedules] = useState<Schedule[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [formData, setFormData] = useState({
@@ -32,36 +42,26 @@ export default function DoctorSchedulePage() {
         loadSchedules();
     }, []);
 
-    /* ================= LOAD SCHEDULES ================= */
+    /* ================= LOAD ================= */
     const loadSchedules = async () => {
         try {
-            const response = await scheduleService.getMySchedules();
-            console.log("✅ LOAD SCHEDULES RESPONSE:", response);
-            setSchedules(response.data || []);
-        } catch (error: any) {
-            console.group("❌ LOAD SCHEDULES ERROR");
-            console.error(error);
-
-            if (error.response) {
-                console.error("Status:", error.response.status);
-                console.error("Response data:", error.response.data);
-            } else if (error.request) {
-                console.error("No response:", error.request);
-            }
-
-            console.groupEnd();
+            const data = await scheduleService.getMySchedules();
+            setSchedules(data || []);
+        } catch (err) {
+            console.error("LOAD SCHEDULE ERROR:", err);
         } finally {
             setLoading(false);
         }
     };
 
-    /* ================= CREATE SCHEDULE ================= */
+    /* ================= CREATE ================= */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // 🔥 ÉP KIỂU ĐÚNG CHO BACKEND
         const payload = {
-            facilityId: Number(formData.facilityId),
+            facilityId: formData.facilityId
+                ? Number(formData.facilityId)
+                : null,
             dayOfWeek: Number(formData.dayOfWeek),
             startTime: formData.startTime,
             endTime: formData.endTime,
@@ -71,31 +71,16 @@ export default function DoctorSchedulePage() {
             validTo: formData.validTo || null,
         };
 
-        console.log("📤 CREATE SCHEDULE PAYLOAD:", payload);
+        console.log("CREATE PAYLOAD:", payload);
 
         try {
             await scheduleService.createSchedule(payload);
             alert("✅ Tạo lịch trực thành công");
             resetForm();
             loadSchedules();
-        } catch (error: any) {
-            console.group("❌ CREATE SCHEDULE ERROR");
-            console.error(error);
-
-            if (error.response) {
-                console.error("Status:", error.response.status);
-                console.error("Headers:", error.response.headers);
-                console.error("Response data:", error.response.data);
-            } else if (error.request) {
-                console.error("No response:", error.request);
-            } else {
-                console.error("Message:", error.message);
-            }
-
-            console.error("Config:", error.config);
-            console.groupEnd();
-
-            alert("❌ Tạo lịch thất bại, check console");
+        } catch (err) {
+            console.error("CREATE ERROR:", err);
+            alert("❌ Tạo lịch thất bại");
         }
     };
 
@@ -114,16 +99,28 @@ export default function DoctorSchedulePage() {
 
     /* ================= DELETE ================= */
     const handleDelete = async (id: number) => {
-        if (!confirm("Bạn có chắc muốn xóa lịch trực này?")) return;
+        if (!confirm("Bạn có chắc muốn xóa lịch này?")) return;
 
         try {
             await scheduleService.deleteSchedule(id);
-            alert("🗑️ Xóa thành công");
             loadSchedules();
-        } catch (error: any) {
-            console.error("❌ DELETE ERROR:", error);
-            alert("Xóa thất bại, check console");
+        } catch (err) {
+            console.error("DELETE ERROR:", err);
+            alert("❌ Xóa thất bại");
         }
+    };
+
+    const dayLabel = (day: number) => {
+        const map: any = {
+            0: "Chủ nhật",
+            1: "Thứ 2",
+            2: "Thứ 3",
+            3: "Thứ 4",
+            4: "Thứ 5",
+            5: "Thứ 6",
+            6: "Thứ 7",
+        };
+        return map[day] ?? day;
     };
 
     if (loading) {
@@ -148,11 +145,13 @@ export default function DoctorSchedulePage() {
                             className="w-full border px-3 py-2 rounded"
                             value={formData.facilityId}
                             onChange={(e) =>
-                                setFormData({ ...formData, facilityId: e.target.value })
+                                setFormData({
+                                    ...formData,
+                                    facilityId: e.target.value,
+                                })
                             }
-                            required
                         >
-                            <option value="">Chọn cơ sở</option>
+                            <option value="">— Không chọn cơ sở —</option>
                             <option value="1">Phòng khám 1</option>
                             <option value="2">Phòng khám 2</option>
                         </select>
@@ -161,7 +160,10 @@ export default function DoctorSchedulePage() {
                             className="w-full border px-3 py-2 rounded"
                             value={formData.dayOfWeek}
                             onChange={(e) =>
-                                setFormData({ ...formData, dayOfWeek: e.target.value })
+                                setFormData({
+                                    ...formData,
+                                    dayOfWeek: e.target.value,
+                                })
                             }
                         >
                             {daysOfWeek.map((d) => (
@@ -176,7 +178,10 @@ export default function DoctorSchedulePage() {
                                 type="time"
                                 value={formData.startTime}
                                 onChange={(e) =>
-                                    setFormData({ ...formData, startTime: e.target.value })
+                                    setFormData({
+                                        ...formData,
+                                        startTime: e.target.value,
+                                    })
                                 }
                                 className="border px-3 py-2 rounded"
                             />
@@ -184,7 +189,10 @@ export default function DoctorSchedulePage() {
                                 type="time"
                                 value={formData.endTime}
                                 onChange={(e) =>
-                                    setFormData({ ...formData, endTime: e.target.value })
+                                    setFormData({
+                                        ...formData,
+                                        endTime: e.target.value,
+                                    })
                                 }
                                 className="border px-3 py-2 rounded"
                             />
@@ -197,7 +205,10 @@ export default function DoctorSchedulePage() {
                                 step={15}
                                 value={formData.slotDuration}
                                 onChange={(e) =>
-                                    setFormData({ ...formData, slotDuration: e.target.value })
+                                    setFormData({
+                                        ...formData,
+                                        slotDuration: e.target.value,
+                                    })
                                 }
                                 className="border px-3 py-2 rounded"
                             />
@@ -220,7 +231,10 @@ export default function DoctorSchedulePage() {
                                 type="date"
                                 value={formData.validFrom}
                                 onChange={(e) =>
-                                    setFormData({ ...formData, validFrom: e.target.value })
+                                    setFormData({
+                                        ...formData,
+                                        validFrom: e.target.value,
+                                    })
                                 }
                                 className="border px-3 py-2 rounded"
                             />
@@ -228,7 +242,10 @@ export default function DoctorSchedulePage() {
                                 type="date"
                                 value={formData.validTo}
                                 onChange={(e) =>
-                                    setFormData({ ...formData, validTo: e.target.value })
+                                    setFormData({
+                                        ...formData,
+                                        validTo: e.target.value,
+                                    })
                                 }
                                 className="border px-3 py-2 rounded"
                             />
@@ -261,16 +278,28 @@ export default function DoctorSchedulePage() {
                             <tbody>
                                 {schedules.map((s) => (
                                     <tr key={s.id} className="border-t">
-                                        <td className="p-2">CS {s.facilityId}</td>
-                                        <td className="p-2">{s.dayOfWeek}</td>
                                         <td className="p-2">
-                                            {s.startTime} - {s.endTime}
+                                            {s.facilityId
+                                                ? `CS ${s.facilityId}`
+                                                : "—"}
                                         </td>
-                                        <td className="p-2">{s.slotDuration}p</td>
-                                        <td className="p-2">{s.maxPatientsPerSlot}</td>
+                                        <td className="p-2">
+                                            {dayLabel(s.dayOfWeek)}
+                                        </td>
+                                        <td className="p-2">
+                                            {s.startTime} – {s.endTime}
+                                        </td>
+                                        <td className="p-2">
+                                            {s.slotDuration}p
+                                        </td>
+                                        <td className="p-2">
+                                            {s.maxPatientsPerSlot}
+                                        </td>
                                         <td className="p-2">
                                             <button
-                                                onClick={() => handleDelete(s.id)}
+                                                onClick={() =>
+                                                    handleDelete(s.id)
+                                                }
                                                 className="text-red-600 hover:underline"
                                             >
                                                 Xóa
