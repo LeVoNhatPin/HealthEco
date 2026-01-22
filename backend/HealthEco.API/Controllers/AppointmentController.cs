@@ -23,7 +23,6 @@ namespace HealthEco.API.Controllers
             _context = context;
         }
 
-        // POST: api/appointment
         [HttpPost]
         [Authorize(Roles = "Patient")]
         public async Task<IActionResult> BookAppointment([FromBody] AppointmentRequest request)
@@ -117,6 +116,7 @@ namespace HealthEco.API.Controllers
                 return StatusCode(500, new { message = "Lỗi server khi đặt lịch" });
             }
         }
+
 
         [Authorize(Roles = "Patient")]
         [HttpGet("my")]
