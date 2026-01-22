@@ -37,7 +37,8 @@ namespace HealthEco.API.Controllers
                 }
 
 
-                var doctorId = request.DoctorId;
+                var doctorId = await GetCurrentDoctorId();
+                if (doctorId == 0) return Unauthorized(new { message = "Unauthorized" });
 
                 // Validate time
                 if (!TimeOnly.TryParse(request.StartTime, out var startTime) ||
