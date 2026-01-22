@@ -118,6 +118,62 @@ namespace HealthEco.API.Controllers
         }
 
 
+        [Authorize(Roles = "Doctor")]
+        [HttpGet("doctor/my")]
+        public async Task<IActionResult> GetDoctorAppointments(DateOnly? date)
+        {
+            var doctorId = int.Parse(
+                User.FindFirstValue("doctorId")!
+            );
+
+            var query = _context.Appointments
+                .Where(a => a.DoctorId == doctorId);
+
+            if (date != null)
+                query = query.Where(a => a.AppointmentDate == date);
+
+            var result = await query
+                .Select(a => new
+                {
+                    a.Id,
+                    a.AppointmentCode,
+                    a.AppointmentDate,
+                    a.StartTime,
+                    a.EndTime,
+                    a.Status,
+                    PatientName = a.Patient.FullName,
+                    a.Symptoms
+                })
+                .ToListAsync();
+
+            return Ok(result);
+        }
+
+
+        [Authorize(Roles = "Patient")]
+        [HttpPut("{id}/cancel")]
+        public async Task<IActionResult> CancelAppointment(int id)
+        {
+            var patientId = int.Parse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!
+            );
+
+            var appointment = await _context.Appointments
+                .FirstOrDefaultAsync(a => a.Id == id && a.PatientId == patientId);
+
+            if (appointment == null)
+                return NotFound("Không tìm thấy lịch hẹn");
+
+            if (appointment.Status != AppointmentStatus.Pending)
+                return BadRequest("Không thể hủy lịch đã xử lý");
+
+            appointment.Status = AppointmentStatus.Cancelled;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true });
+        }
+
+
         [Authorize(Roles = "Patient")]
         [HttpGet("my")]
         public async Task<IActionResult> GetMyAppointments()
@@ -290,56 +346,7 @@ namespace HealthEco.API.Controllers
             }
         }
 
-        // DELETE: api/appointment/{id}
-        [HttpDelete("{id}")]
-        [AllowAnonymous]
-        public async Task<IActionResult> CancelAppointment(int id)
-        {
-            try
-            {
-                var appointment = await _context.Appointments.FindAsync(id);
-                if (appointment == null)
-                {
-                    return NotFound(new { message = "Không tìm thấy lịch hẹn" });
-                }
-
-                var userId = GetUserId();
-                if (appointment.PatientId != userId)
-                {
-                    return Unauthorized(new { message = "Không có quyền hủy lịch hẹn này" });
-                }
-
-                // Only allow cancellation if appointment is in PENDING status
-                if (appointment.Status != AppointmentStatus.Pending)
-                {
-                    return BadRequest(new { message = "Chỉ có thể hủy lịch hẹn đang chờ xác nhận" });
-                }
-
-                // Check cancellation time (at least 24 hours before)
-                var appointmentDateTime = appointment.AppointmentDate.ToDateTime(appointment.StartTime);
-                if (appointmentDateTime < DateTime.Now.AddHours(24))
-                {
-                    return BadRequest(new { message = "Chỉ có thể hủy lịch trước 24 giờ" });
-                }
-
-                appointment.Status = AppointmentStatus.Cancelled;
-                appointment.UpdatedAt = DateTime.UtcNow;
-
-                _context.Appointments.Update(appointment);
-                await _context.SaveChangesAsync();
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Hủy lịch hẹn thành công"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error canceling appointment {id}");
-                return StatusCode(500, new { message = "Lỗi server khi hủy lịch hẹn" });
-            }
-        }
+       
 
         // GET: api/appointment/{id}
         [HttpGet("{id}")]
