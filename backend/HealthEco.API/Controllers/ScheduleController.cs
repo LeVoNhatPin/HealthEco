@@ -10,6 +10,7 @@ namespace HealthEco.API.Controllers
 {
     [ApiController]
     [Route("api/schedule")]
+    [AllowAnonymous]
     public class ScheduleController : ControllerBase
     {
         private readonly ILogger<ScheduleController> _logger;
@@ -25,7 +26,7 @@ namespace HealthEco.API.Controllers
 
         // GET api/schedule/my-schedules
         [HttpGet("my-schedules")]
-        [Authorize(Roles = "Doctor")]
+         
         public async Task<IActionResult> GetMySchedules()
         {
             try
@@ -55,18 +56,11 @@ namespace HealthEco.API.Controllers
 
         // POST api/schedule
         [HttpPost]
-        [Authorize(Roles = "Doctor")]
         public async Task<IActionResult> CreateSchedule([FromBody] DoctorScheduleRequest request)
         {
             try
             {
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (!int.TryParse(userIdStr, out var userId))
-                    return Unauthorized();
-
-                var doctor = await _context.Doctors
-                    .FirstOrDefaultAsync(d => d.UserId == userId);
-
+                var doctor = await _context.Doctors.FirstOrDefaultAsync();
                 if (doctor == null)
                     return BadRequest("Doctor not found");
 
@@ -75,7 +69,6 @@ namespace HealthEco.API.Controllers
 
                 if (!TimeSpan.TryParse(request.EndTime, out var end))
                     return BadRequest("Invalid EndTime");
-
 
                 if (!DateTime.TryParse(request.ValidFrom, out var validFrom))
                     return BadRequest("Invalid ValidFrom");
@@ -87,7 +80,6 @@ namespace HealthEco.API.Controllers
                         return BadRequest("Invalid ValidTo");
                     validTo = parsedValidTo;
                 }
-
 
                 var schedule = new DoctorSchedule
                 {
@@ -111,17 +103,10 @@ namespace HealthEco.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
-                    "CreateSchedule failed | Message: {Message} | StackTrace: {StackTrace}",
-                    ex.Message,
-                    ex.StackTrace);
-
-                return StatusCode(500, new
-                {
-                    error = "CREATE_SCHEDULE_FAILED",
-                    detail = ex.Message
-                });
+                _logger.LogError(ex, "CreateSchedule failed");
+                return StatusCode(500, ex.Message);
             }
         }
+
     }
 }
