@@ -5,6 +5,8 @@ namespace HealthEco.Core.Entities
 {
     public class DoctorSchedule : BaseEntity
     {
+        [Column("doctorid")]
+
         public int DoctorId { get; set; }
         public Doctor Doctor { get; set; } = null!;
 
