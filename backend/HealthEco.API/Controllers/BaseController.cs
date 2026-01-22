@@ -18,9 +18,16 @@ namespace HealthEco.API.Controllers
 
         protected int GetUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return userIdClaim != null ? int.Parse(userIdClaim) : 0;
+            var userIdClaim =
+                User.FindFirst(ClaimTypes.NameIdentifier)
+                ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+
+            if (userIdClaim == null)
+                return 0;
+
+            return int.TryParse(userIdClaim.Value, out var id) ? id : 0;
         }
+
 
         protected string GetUserEmail()
         {
