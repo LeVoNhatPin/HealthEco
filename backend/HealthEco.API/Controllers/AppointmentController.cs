@@ -82,7 +82,6 @@ namespace HealthEco.API.Controllers
                     AppointmentCode = $"APT-{DateTime.UtcNow:yyyyMMddHHmmss}-{patientId}",
                     PatientId = patientId,
                     DoctorId = request.DoctorId,
-                    FacilityId = 1,
                     AppointmentDate = appointmentDate,
                     StartTime = startTime,
                     EndTime = startTime.AddMinutes(schedule.SlotDuration),
@@ -93,7 +92,7 @@ namespace HealthEco.API.Controllers
                     PaymentStatus = PaymentStatus.Pending,
                     CreatedAt = DateTime.UtcNow
                 };
-
+                _context.Entry(appointment).Property("FacilityId").CurrentValue = 1;
                 _context.Appointments.Add(appointment);
                 await _context.SaveChangesAsync();
 
