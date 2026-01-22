@@ -5,6 +5,7 @@ using HealthEco.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using HealthEco.Core.DTOs.Schedule;
 
 namespace HealthEco.API.Controllers
 {
@@ -56,6 +57,124 @@ namespace HealthEco.API.Controllers
 
             return Ok(schedules);
         }
+
+        [HttpGet("doctor/{doctorId}/slots")]
+        public async Task<IActionResult> GetDoctorAvailableSlots(
+            int doctorId,
+            [FromQuery] DateTime date
+        )
+        {
+            int dayOfWeek = (int)date.DayOfWeek;
+            if (dayOfWeek == 0) dayOfWeek = 7;
+
+            var schedules = await _context.DoctorSchedule
+                .Where(s =>
+                    s.DoctorId == doctorId &&
+                    s.DayOfWeek == dayOfWeek &&
+                    s.IsActive &&
+                    s.ValidFrom.Date <= date.Date &&
+                    (s.ValidTo == null || s.ValidTo.Value.Date >= date.Date)
+                )
+                .AsNoTracking()
+                .ToListAsync();
+
+            var slots = new List<DoctorSlotDto>();
+
+            foreach (var schedule in schedules)
+            {
+                var current = schedule.StartTime;
+                var duration = TimeSpan.FromMinutes(schedule.SlotDuration);
+
+                while (current + duration <= schedule.EndTime)
+                {
+                    var slotEnd = current + duration;
+
+                    // 🔥 ĐẾM SỐ LƯỢNG APPOINTMENT ĐÃ ĐẶT SLOT NÀY
+                    var bookedCount = await _context.Appointments.CountAsync(a =>
+                        a.DoctorId == doctorId &&
+                        a.AppointmentDate == DateOnly.FromDateTime(date) &&
+                        a.StartTime == TimeOnly.FromTimeSpan(current)
+                    );
+
+                    slots.Add(new DoctorSlotDto
+                    {
+                        Date = date.Date,
+                        StartTime = current,
+                        EndTime = slotEnd,
+                        IsAvailable = bookedCount < schedule.MaxPatientsPerSlot
+                    });
+
+                    current = slotEnd;
+                }
+            }
+
+            return Ok(slots);
+        }
+
+
+
+        // ==============================
+        // GET: api/v1/schedule/available-slots
+        // ==============================
+        [HttpGet("available-slots")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAvailableSlots(
+            [FromQuery] int doctorId,
+            [FromQuery] int facilityId,
+            [FromQuery] string date // yyyy-MM-dd
+        )
+        {
+            if (!DateOnly.TryParse(date, out var selectedDate))
+                return BadRequest("Invalid date format");
+
+            var dayOfWeek = (int)selectedDate.DayOfWeek;
+
+            // 1️⃣ Lấy lịch trực hợp lệ của bác sĩ
+            var schedules = await _context.DoctorSchedule
+                .Where(s =>
+                    s.DoctorId == doctorId &&
+                    s.DayOfWeek == dayOfWeek &&
+                    s.IsActive &&
+                    s.ValidFrom <= selectedDate.ToDateTime(TimeOnly.MinValue) &&
+                    (s.ValidTo == null || s.ValidTo >= selectedDate.ToDateTime(TimeOnly.MinValue))
+                )
+                .AsNoTracking()
+                .ToListAsync();
+
+            var result = new List<AvailableSlotResponse>();
+
+            foreach (var schedule in schedules)
+            {
+                var slotStart = schedule.StartTime;
+                var slotEndLimit = schedule.EndTime;
+                var slotDuration = TimeSpan.FromMinutes(schedule.SlotDuration);
+
+                while (slotStart + slotDuration <= slotEndLimit)
+                {
+                    var slotEnd = slotStart + slotDuration;
+
+                    // 2️⃣ Check slot đã bị đặt chưa
+                    var bookedCount = await _context.Appointments.CountAsync(a =>
+                        a.DoctorId == doctorId &&
+                        a.AppointmentDate == selectedDate &&
+                        a.StartTime == TimeOnly.FromTimeSpan(slotStart)
+                    );
+
+                    result.Add(new AvailableSlotResponse
+                    {
+                        StartTime = slotStart.ToString(@"hh\:mm"),
+                        EndTime = slotEnd.ToString(@"hh\:mm"),
+                        IsAvailable = bookedCount < schedule.MaxPatientsPerSlot
+                    });
+
+                    slotStart = slotEnd;
+                }
+            }
+
+            return Ok(result);
+        }
+
+
 
         // ==============================
         // POST: api/v1/schedule
