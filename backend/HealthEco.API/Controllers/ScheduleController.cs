@@ -1,11 +1,12 @@
 ﻿// HealthEco.API/Controllers/ScheduleController.cs
 using HealthEco.Core.DTOs.Schedule;
+using HealthEco.Core.DTOs.Schedule;
 using HealthEco.Core.Entities;
+using HealthEco.Core.Entities.Enums;
 using HealthEco.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using HealthEco.Core.DTOs.Schedule;
 
 namespace HealthEco.API.Controllers
 {
@@ -59,55 +60,70 @@ namespace HealthEco.API.Controllers
         }
 
         [HttpGet("doctor/{doctorId}/slots")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetDoctorAvailableSlots(
     int doctorId,
-    [FromQuery] DateTime date
-)
+    [FromQuery] DateTime date)
         {
-            // 1️⃣ ÉP date sang UTC (CỰC KỲ QUAN TRỌNG)
-            var selectedDateUtc = DateTime.SpecifyKind(
-                date.Date,
-                DateTimeKind.Utc
-            );
+            // ép date về UTC (00:00)
+            var targetDate = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
 
-            // 2️⃣ Thứ trong tuần
-            var dayOfWeek = (int)selectedDateUtc.DayOfWeek;
-
-            // 3️⃣ Query lịch trực
+            // 1. Lấy lịch trực trong ngày
             var schedules = await _context.DoctorSchedule
                 .Where(s =>
                     s.DoctorId == doctorId &&
-                    s.DayOfWeek == dayOfWeek &&
-                    s.IsActive &&
-                    s.ValidFrom <= selectedDateUtc &&
-                    (s.ValidTo == null || s.ValidTo >= selectedDateUtc)
+                    s.DayOfWeek == (int)targetDate.DayOfWeek &&
+                    s.ValidFrom <= targetDate &&
+                    s.ValidTo >= targetDate
                 )
-                .AsNoTracking()
+                .ToListAsync();
+
+            if (!schedules.Any())
+                return Ok(new List<object>());
+
+            // 2. Lấy danh sách lịch hẹn đã đặt
+            var targetDateOnly = DateOnly.FromDateTime(targetDate);
+
+            var appointments = await _context.Appointments
+                .Where(a =>
+                    a.DoctorId == doctorId &&
+                    a.AppointmentDate == targetDateOnly &&
+                    a.Status != AppointmentStatus.Cancelled
+                )
                 .ToListAsync();
 
             var result = new List<object>();
 
             foreach (var schedule in schedules)
             {
-                var slotStart = schedule.StartTime;
-                var slotDuration = TimeSpan.FromMinutes(schedule.SlotDuration);
+                var start = schedule.StartTime;
+                var end = schedule.EndTime;
+                var slotMinutes = schedule.SlotDuration;
 
-                while (slotStart + slotDuration <= schedule.EndTime)
+                while (start.Add(TimeSpan.FromMinutes(slotMinutes)) <= end)
                 {
-                    result.Add(new
-                    {
-                        StartTime = slotStart.ToString(@"hh\:mm"),
-                        EndTime = (slotStart + slotDuration).ToString(@"hh\:mm")
-                    });
+                    var slotEnd = start.Add(TimeSpan.FromMinutes(slotMinutes));
 
-                    slotStart += slotDuration;
+                    // 3. Đếm số bệnh nhân đã đặt slot này
+                    var bookedCount = appointments.Count(a =>
+                        a.StartTime == TimeOnly.FromTimeSpan(start)
+
+                    );
+
+                    if (bookedCount < schedule.MaxPatientsPerSlot)
+                    {
+                        result.Add(new
+                        {
+                            startTime = start.ToString(@"hh\:mm"),
+                            endTime = slotEnd.ToString(@"hh\:mm")
+                        });
+                    }
+
+                    start = slotEnd;
                 }
             }
 
             return Ok(result);
         }
-
 
         // ==============================
         // GET: api/v1/schedule/available-slots
