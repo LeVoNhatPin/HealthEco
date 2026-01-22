@@ -70,7 +70,8 @@ namespace HealthEco.API.Controllers
                 }
 
                 // Check schedule availability
-                var dayOfWeek = appointmentDate.DayOfWeek;
+                var dayOfWeek = (int)appointmentDate.DayOfWeek;
+
                 var schedule = await _context.DoctorSchedules
                     .FirstOrDefaultAsync(s => s.DoctorId == request.DoctorId &&
                                               s.FacilityId == request.FacilityId &&
@@ -84,11 +85,14 @@ namespace HealthEco.API.Controllers
                     return BadRequest(new { message = "Bác sĩ không có lịch trực vào ngày này" });
                 }
 
-                // Check if time is within working hours
-                if (startTime < schedule.StartTime || startTime >= schedule.EndTime)
+                var scheduleStart = TimeOnly.FromTimeSpan(schedule.StartTime);
+                var scheduleEnd = TimeOnly.FromTimeSpan(schedule.EndTime);
+
+                if (startTime < scheduleStart || startTime >= scheduleEnd)
                 {
                     return BadRequest(new { message = "Thời gian không nằm trong khung giờ làm việc" });
                 }
+
 
                 // Check if slot is full
                 var existingAppointments = await _context.Appointments
