@@ -6,6 +6,7 @@ using HealthEco.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace HealthEco.API.Controllers
 {
@@ -115,6 +116,21 @@ namespace HealthEco.API.Controllers
                 _logger.LogError(ex, "BookAppointment error");
                 return StatusCode(500, new { message = "Lỗi server khi đặt lịch" });
             }
+        }
+
+        [Authorize(Roles = "Patient")]
+        [HttpGet("my")]
+        public async Task<IActionResult> GetMyAppointments()
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var appointments = await _context.Appointments
+                .Include(a => a.Doctor)
+                .Where(a => a.PatientId == userId)
+                .OrderByDescending(a => a.AppointmentDate)
+                .ToListAsync();
+
+            return Ok(appointments);
         }
 
 
