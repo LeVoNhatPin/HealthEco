@@ -10,7 +10,6 @@ namespace HealthEco.API.Controllers
 {
     [ApiController]
     [Route("api/v1/schedule")]
-    [Authorize(Roles = "Doctor")]
     public class ScheduleController : BaseController
     {
         private readonly ApplicationDbContext _context;
