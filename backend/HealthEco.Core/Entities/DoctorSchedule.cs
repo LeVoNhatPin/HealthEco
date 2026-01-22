@@ -22,5 +22,6 @@ namespace HealthEco.Core.Entities
 
         public DateTime ValidFrom { get; set; }
         public DateTime? ValidTo { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
