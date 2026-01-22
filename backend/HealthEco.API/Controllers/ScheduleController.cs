@@ -1,4 +1,5 @@
-﻿using HealthEco.Core.DTOs.Schedule;
+﻿// HealthEco.API/Controllers/ScheduleController.cs
+using HealthEco.Core.DTOs.Schedule;
 using HealthEco.Core.Entities;
 using HealthEco.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
@@ -10,15 +11,13 @@ namespace HealthEco.API.Controllers
 {
     [ApiController]
     [Route("api/schedule")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Doctor")]
     public class ScheduleController : ControllerBase
     {
-        private readonly ILogger<ScheduleController> _logger;
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<ScheduleController> _logger;
 
-        public ScheduleController(
-            ApplicationDbContext context,
-            ILogger<ScheduleController> logger)
+        public ScheduleController(ApplicationDbContext context, ILogger<ScheduleController> logger)
         {
             _context = context;
             _logger = logger;
@@ -26,14 +25,11 @@ namespace HealthEco.API.Controllers
 
         // GET api/schedule/my-schedules
         [HttpGet("my-schedules")]
-         
         public async Task<IActionResult> GetMySchedules()
         {
             try
             {
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (!int.TryParse(userIdStr, out var userId))
-                    return Unauthorized("Invalid token");
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
                 var doctor = await _context.Doctors
                     .FirstOrDefaultAsync(d => d.UserId == userId);
@@ -60,7 +56,11 @@ namespace HealthEco.API.Controllers
         {
             try
             {
-                var doctor = await _context.Doctors.FirstOrDefaultAsync();
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+                var doctor = await _context.Doctors
+                    .FirstOrDefaultAsync(d => d.UserId == userId);
+
                 if (doctor == null)
                     return BadRequest("Doctor not found");
 
@@ -78,13 +78,14 @@ namespace HealthEco.API.Controllers
                 {
                     if (!DateTime.TryParse(request.ValidTo, out var parsedValidTo))
                         return BadRequest("Invalid ValidTo");
+
                     validTo = parsedValidTo;
                 }
 
                 var schedule = new DoctorSchedule
                 {
                     DoctorId = doctor.Id,
-                    FacilityId = request.FacilityId,
+                    FacilityId = null, // ✅ KHÔNG DÙNG FACILITY
                     DayOfWeek = (int)request.DayOfWeek,
                     StartTime = start,
                     EndTime = end,
@@ -104,9 +105,12 @@ namespace HealthEco.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "CreateSchedule failed");
-                return StatusCode(500, ex.Message);
+                return StatusCode(500, new
+                {
+                    error = "CREATE_SCHEDULE_FAILED",
+                    detail = ex.InnerException?.Message ?? ex.Message
+                });
             }
         }
-
     }
 }

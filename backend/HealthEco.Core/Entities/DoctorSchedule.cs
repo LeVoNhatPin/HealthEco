@@ -6,20 +6,22 @@ namespace HealthEco.Core.Entities
         public int DoctorId { get; set; }
         public Doctor Doctor { get; set; } = null!;
 
-        public int FacilityId { get; set; }
-        public MedicalFacility Facility { get; set; } = null!;
+        // ✅ Facility OPTIONAL
+        public int? FacilityId { get; set; }
+        public MedicalFacility? Facility { get; set; }
 
+        // 0 = Sunday, 1 = Monday, ...
         public int DayOfWeek { get; set; }
+
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
 
-        public int SlotDuration { get; set; } = 30; // minutes
+        public int SlotDuration { get; set; } = 30;
         public int MaxPatientsPerSlot { get; set; } = 1;
+
         public bool IsActive { get; set; } = true;
 
         public DateTime ValidFrom { get; set; }
         public DateTime? ValidTo { get; set; }
-
-        public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     }
 }
