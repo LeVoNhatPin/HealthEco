@@ -61,7 +61,8 @@ export default function DoctorSchedulePage() {
         const payload = {
             facilityId: formData.facilityId
                 ? Number(formData.facilityId)
-                : null,
+                : 1, // default facility
+
             dayOfWeek: Number(formData.dayOfWeek),
             startTime: formData.startTime,
             endTime: formData.endTime,
