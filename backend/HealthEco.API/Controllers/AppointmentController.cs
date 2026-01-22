@@ -122,17 +122,31 @@ namespace HealthEco.API.Controllers
         [HttpGet("my")]
         public async Task<IActionResult> GetMyAppointments()
         {
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var patientId = int.Parse(
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!
+            );
 
             var appointments = await _context.Appointments
+                .Where(a => a.PatientId == patientId)
                 .Include(a => a.Doctor)
-                .Where(a => a.PatientId == userId)
                 .OrderByDescending(a => a.AppointmentDate)
+                .Select(a => new AppointmentResponseDto
+                {
+                    Id = a.Id,
+                    AppointmentCode = a.AppointmentCode,
+                    Date = a.AppointmentDate,
+                    StartTime = a.StartTime,
+                    EndTime = a.EndTime,
+                    Status = a.Status.ToString(),
+
+                    DoctorId = a.DoctorId,
+                    DoctorName = a.Doctor.User.FullName,
+                    DoctorAvatar = a.Doctor.User.AvatarUrl
+                })
                 .ToListAsync();
 
             return Ok(appointments);
         }
-
 
         // GET: api/appointment/my-appointments
         [HttpGet("my-appointments")]
