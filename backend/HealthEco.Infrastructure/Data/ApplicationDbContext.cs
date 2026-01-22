@@ -20,7 +20,7 @@ namespace HealthEco.Infrastructure.Data
         public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
         public DbSet<Specialization> Specializations => Set<Specialization>();
 
-        public DbSet<DoctorSchedule> DoctorSchedules => Set<DoctorSchedule>();
+        public DbSet<DoctorSchedule> DoctorSchedule => Set<DoctorSchedule>();
 
         public DbSet<Appointment> Appointments => Set<Appointment>();
         public DbSet<Payment> Payments => Set<Payment>();
@@ -36,6 +36,9 @@ namespace HealthEco.Infrastructure.Data
             modelBuilder.ApplyConfigurationsFromAssembly(
                 Assembly.GetExecutingAssembly()
             );
+
+            modelBuilder.Entity<DoctorSchedule>()
+        .ToTable("doctorschedule");
 
             // ❌ KHÔNG CÒN Facility mapping cho DoctorSchedule
 
