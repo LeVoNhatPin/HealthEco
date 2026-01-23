@@ -1,39 +1,47 @@
-import { NextResponse } from "next/server";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY!,
+});
 
 export async function POST(req: Request) {
-    const { message } = await req.json();
+    try {
+        const body = await req.json();
+        const { message } = body;
 
-    if (!message) {
-        return NextResponse.json(
-            { success: false, message: "Message is required" },
-            { status: 400 }
-        );
-    }
+        if (!message) {
+            return Response.json(
+                { error: "Message is required" },
+                { status: 400 },
+            );
+        }
 
-    // 👉 Ví dụ gọi OpenAI
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
+        const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
                 {
                     role: "system",
                     content:
-                        "Bạn là trợ lý AI của hệ thống HealthEco, hỗ trợ đặt lịch khám, bác sĩ, phòng khám.",
+                        "Bạn là chatbot AI của HealthEco, tư vấn y tế ngắn gọn, dễ hiểu, không chẩn đoán thay bác sĩ.",
                 },
-                { role: "user", content: message },
+                {
+                    role: "user",
+                    content: message,
+                },
             ],
-        }),
-    });
+        });
 
-    const data = await response.json();
+        return Response.json({
+            reply: completion.choices[0].message.content,
+        });
+    } catch (error: any) {
+        console.error("CHAT API ERROR:", error);
 
-    return NextResponse.json({
-        success: true,
-        reply: data.choices[0].message.content,
-    });
+        return Response.json(
+            {
+                error: error.message || "Internal Server Error",
+            },
+            { status: 500 },
+        );
+    }
 }
