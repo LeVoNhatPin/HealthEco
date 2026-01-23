@@ -237,67 +237,7 @@ function DashboardContent() {
                 </div>
 
                 {/* RECENT APPOINTMENTS */}
-                <Card className="mt-8">
-                    <CardHeader>
-                        <CardTitle>Lịch hẹn gần đây</CardTitle>
-                        <CardDescription>
-                            5 lịch hẹn mới nhất
-                        </CardDescription>
-                    </CardHeader>
 
-                    <CardContent>
-                        {loadingAppointments && <p>Đang tải...</p>}
-
-                        {!loadingAppointments && appointments.length === 0 && (
-                            <p className="text-sm text-gray-500">
-                                Bạn chưa có lịch hẹn nào
-                            </p>
-                        )}
-
-                        <div className="space-y-4">
-                            {appointments.slice(0, 5).map((appt) => (
-                                <div
-                                    key={appt.id}
-                                    className="flex justify-between items-center border rounded-lg p-4"
-                                >
-                                    <div>
-                                        <p className="font-medium">
-                                            BS. {appt.doctor?.user?.fullName}
-                                        </p>
-                                        <p className="text-sm text-gray-600">
-                                            {appt.doctor?.specialization?.name}
-                                        </p>
-                                        <p className="text-sm text-gray-500">
-                                            {new Date(
-                                                appt.appointmentDate
-                                            ).toLocaleString()}
-                                        </p>
-                                    </div>
-
-                                    <span
-                                        className={`px-3 py-1 text-sm rounded-full ${
-                                            appt.status === 'Confirmed'
-                                                ? 'bg-green-100 text-green-700'
-                                                : appt.status === 'Pending'
-                                                ? 'bg-yellow-100 text-yellow-700'
-                                                : appt.status === 'Completed'
-                                                ? 'bg-blue-100 text-blue-700'
-                                                : 'bg-red-100 text-red-700'
-                                        }`}
-                                    >
-                                        {appt.status}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <Link href="/bang-dieu-khien/lich-hen">
-                            <Button className="w-full mt-4" variant="outline">
-                                Xem tất cả lịch hẹn
-                            </Button>
-                        </Link>
-                    </CardContent>
-                </Card>
 
                 {/* ADMIN */}
                 {user?.role === 'SystemAdmin' && (
