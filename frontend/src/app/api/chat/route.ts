@@ -1,48 +1,37 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-export async function POST(req: Request) {
-  try {
-    const apiKey = process.env.OPENAI_API_KEY;
+export const runtime = "nodejs"; // ⭐ RẤT QUAN TRỌNG
 
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OPENAI_API_KEY is missing" },
-        { status: 500 }
-      );
+export async function POST(req: NextRequest) {
+    try {
+        const { messages } = await req.json();
+
+        if (!process.env.OPENAI_API_KEY) {
+            return NextResponse.json(
+                { error: "Missing OPENAI_API_KEY" },
+                { status: 500 }
+            );
+        }
+
+        // ❗ Khởi tạo OpenAI BÊN TRONG handler
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+        });
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages,
+        });
+
+        return NextResponse.json({
+            reply: completion.choices[0].message.content,
+        });
+    } catch (err: any) {
+        console.error("Chat API error:", err);
+        return NextResponse.json(
+            { error: err.message || "Internal Server Error" },
+            { status: 500 }
+        );
     }
-
-    const openai = new OpenAI({ apiKey });
-
-    const { message } = await req.json();
-
-    if (!message) {
-      return NextResponse.json(
-        { error: "Missing message" },
-        { status: 400 }
-      );
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content:
-            "Bạn là trợ lý y tế HealthEco, trả lời ngắn gọn, dễ hiểu, thân thiện.",
-        },
-        { role: "user", content: message },
-      ],
-    });
-
-    return NextResponse.json({
-      reply: completion.choices[0].message.content,
-    });
-  } catch (err) {
-    console.error("CHAT API ERROR:", err);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
-  }
 }
