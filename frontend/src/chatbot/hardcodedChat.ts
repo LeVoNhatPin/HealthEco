@@ -134,6 +134,6 @@ export const HARD_CHAT = {
     ],
 
     fallback: {
-        a: "Mình chưa hiểu rõ câu hỏi này 😅 Hiện tại chatbot đang ở chế độ trả lời cứng. Bạn thử hỏi theo cách khác nhé.",
+        a: "Mình chưa hiểu rõ câu hỏi này 😅. Bạn thử hỏi theo cách khác nhé.",
     },
 };
