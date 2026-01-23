@@ -144,7 +144,7 @@ export default function MyAppointmentsPage() {
                                     <RefreshCw className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} />
                                     {loading ? 'Đang tải...' : 'Làm mới'}
                                 </Button>
-                                <Button className="bg-gradient-to-r from-blue-600 to-indigo-600" asChild>
+                                <Button className="bg-gradient-to-r from-blue-600 to-indigo-600" >
                                     <a href="/dat-lich">
                                         <Calendar className="h-5 w-5 mr-2" />
                                         Đặt lịch mới
@@ -254,7 +254,7 @@ export default function MyAppointmentsPage() {
                                         ? 'Hãy đặt lịch hẹn với bác sĩ để bắt đầu trải nghiệm dịch vụ của chúng tôi' 
                                         : 'Không tìm thấy lịch hẹn nào với trạng thái này'}
                                 </p>
-                                <Button asChild className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                                <Button  className="bg-gradient-to-r from-blue-600 to-indigo-600">
                                     <a href="/dat-lich">
                                         <Calendar className="h-5 w-5 mr-2" />
                                         Đặt lịch ngay
@@ -351,14 +351,14 @@ export default function MyAppointmentsPage() {
                                                             </Button>
                                                         )}
                                                         
-                                                        <Button variant="outline" className="w-full" asChild>
+                                                        <Button variant="outline" className="w-full" >
                                                             <a href={`/lich-hen/${appointment.id}`}>
                                                                 <FileText className="h-5 w-5 mr-2" />
                                                                 Xem chi tiết
                                                             </a>
                                                         </Button>
                                                         
-                                                        <Button variant="ghost" className="w-full" asChild>
+                                                        <Button variant="ghost" className="w-full" >
                                                             <a href={`/bac-si/${appointment.doctorId || ''}`}>
                                                                 <User className="h-5 w-5 mr-2" />
                                                                 Xem thông tin bác sĩ
