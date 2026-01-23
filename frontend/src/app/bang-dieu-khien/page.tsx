@@ -97,7 +97,12 @@ function DashboardContent() {
                                     Xem & Chỉnh sửa Hồ Sơ
                                 </Button>
                             </Link>
-
+                            <Link href="/bang-dieu-khien/lich-hen">
+                                <Button className="w-full justify-start" variant="outline">
+                                    <User className="mr-2 h-4 w-4" />
+                                    Lịch hẹn
+                                </Button>
+                            </Link>
                             <Link href="/dat-lich">
                                 <Button className="w-full justify-start" variant="outline">
                                     <Calendar className="mr-2 h-4 w-4" />
