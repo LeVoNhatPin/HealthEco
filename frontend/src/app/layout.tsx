@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import Navbar from '@/components/layout/Navbar';
+import Chatbot from '@/components/chatbot/Chatbt';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -51,6 +52,7 @@ export default function RootLayout({
                             }}
                         />
                     </div>
+                     <Chatbot />
                 </AuthProvider>
             </body>
         </html>
