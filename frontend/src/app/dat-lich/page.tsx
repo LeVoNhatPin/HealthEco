@@ -5,7 +5,6 @@ import { doctorService } from "@/services/doctor.service";
 import { scheduleService } from "@/services/schedule.service";
 import { appointmentService } from "@/services/appointment.service";
 
-/* ================== UTILS ================== */
 const formatDateYMD = (date: Date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -26,15 +25,15 @@ const formatDateVN = (dateStr: string) => {
     );
 };
 
-/* ================== PAGE ================== */
 export default function BookingPage() {
     const [step, setStep] = useState(1);
 
     const [doctors, setDoctors] = useState<any[]>([]);
+    const [filteredDoctors, setFilteredDoctors] = useState<any[]>([]);
     const [specializations, setSpecializations] = useState<any[]>([]);
 
     const [search, setSearch] = useState("");
-    const [selectedSpec, setSelectedSpec] = useState("");
+    const [specId, setSpecId] = useState("");
 
     const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
     const [selectedDate, setSelectedDate] = useState("");
@@ -44,80 +43,96 @@ export default function BookingPage() {
 
     const [loading, setLoading] = useState(false);
 
-    /* ================== LOAD DATA ================== */
+    // ================= LOAD DATA =================
     useEffect(() => {
-        const loadData = async () => {
+        const load = async () => {
             const doctorRes = await doctorService.getDoctors();
             const specRes = await doctorService.getSpecializations();
 
-            setDoctors(doctorRes.data || []);
-            setSpecializations(specRes || []);
+            const doctorList = Array.isArray(doctorRes?.data)
+                ? doctorRes.data
+                : [];
+
+            const specList = Array.isArray(specRes?.data)
+                ? specRes.data
+                : [];
+
+            setDoctors(doctorList);
+            setFilteredDoctors(doctorList);
+            setSpecializations(specList);
         };
 
-        loadData();
+        load();
     }, []);
 
-    /* ================== FILTER ================== */
-    const filteredDoctors = doctors.filter((d) => {
-        const matchName = d.user.fullName
-            .toLowerCase()
-            .includes(search.toLowerCase());
+    // ================= FILTER =================
+    useEffect(() => {
+        let result = [...doctors];
 
-        const matchSpec = selectedSpec
-            ? d.specialization?.id === Number(selectedSpec)
-            : true;
+        if (search) {
+            result = result.filter((d) =>
+                d.user.fullName.toLowerCase().includes(search.toLowerCase())
+            );
+        }
 
-        return matchName && matchSpec;
-    });
+        if (specId) {
+            result = result.filter(
+                (d) => String(d.specialization?.id) === specId
+            );
+        }
 
-    /* ================== HANDLERS ================== */
+        setFilteredDoctors(result);
+    }, [search, specId, doctors]);
+
+    // ================= DATE CHANGE =================
     const handleDateChange = async (dateStr: string) => {
         if (!selectedDoctor) return;
 
         setSelectedDate(dateStr);
         setLoading(true);
-        setAvailableSlots([]);
 
         try {
-            const slots = await scheduleService.getAvailableSlots(
+            const res = await scheduleService.getAvailableSlots(
                 selectedDoctor.id,
                 1,
                 dateStr
             );
-            setAvailableSlots(slots || []);
+
+            const slots = Array.isArray(res)
+                ? res
+                : Array.isArray(res?.data)
+                ? res.data
+                : [];
+
+            setAvailableSlots(slots);
         } finally {
             setLoading(false);
         }
     };
 
-    /* ================== UI ================== */
+    // ================= UI =================
     return (
-        <div className="container mx-auto p-4 max-w-5xl">
+        <div className="max-w-5xl mx-auto p-6">
             <h1 className="text-2xl font-bold mb-6">Đặt lịch khám</h1>
 
-            {/* ================== STEP 1: CHỌN BÁC SĨ ================== */}
+            {/* ================= STEP 1 ================= */}
             {step === 1 && (
-                <div>
+                <>
                     {/* FILTER */}
-                    <div className="flex flex-col md:flex-row gap-3 mb-5">
+                    <div className="bg-white p-4 rounded shadow mb-6 grid md:grid-cols-3 gap-4">
                         <input
-                            type="text"
-                            placeholder="🔍 Tìm bác sĩ theo tên..."
+                            className="border px-3 py-2 rounded"
+                            placeholder="Tìm tên bác sĩ..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="border rounded px-4 py-2 flex-1"
                         />
 
                         <select
-                            value={selectedSpec}
-                            onChange={(e) =>
-                                setSelectedSpec(e.target.value)
-                            }
-                            className="border rounded px-4 py-2"
+                            className="border px-3 py-2 rounded"
+                            value={specId}
+                            onChange={(e) => setSpecId(e.target.value)}
                         >
-                            <option value="">
-                                Tất cả chuyên khoa
-                            </option>
+                            <option value="">Tất cả chuyên khoa</option>
                             {specializations.map((s) => (
                                 <option key={s.id} value={s.id}>
                                     {s.name}
@@ -126,12 +141,12 @@ export default function BookingPage() {
                         </select>
                     </div>
 
-                    {/* LIST */}
+                    {/* DOCTOR LIST */}
                     <div className="grid md:grid-cols-2 gap-4">
                         {filteredDoctors.map((d) => (
                             <div
                                 key={d.id}
-                                className="border rounded-lg p-4 cursor-pointer hover:shadow transition"
+                                className="border rounded-lg p-4 hover:shadow cursor-pointer"
                                 onClick={() => {
                                     setSelectedDoctor(d);
                                     setStep(2);
@@ -143,72 +158,50 @@ export default function BookingPage() {
                                 <p className="text-sm text-gray-600">
                                     {d.specialization?.name}
                                 </p>
-                                {d.bio && (
-                                    <p className="text-sm text-gray-500 mt-2 line-clamp-2">
-                                        {d.bio}
-                                    </p>
-                                )}
+                                <p className="text-sm mt-2">
+                                    Phí khám:{" "}
+                                    <b>
+                                        {d.consultationFee?.toLocaleString()}{" "}
+                                        VND
+                                    </b>
+                                </p>
                             </div>
                         ))}
-
-                        {filteredDoctors.length === 0 && (
-                            <p className="text-gray-500">
-                                Không tìm thấy bác sĩ phù hợp 😢
-                            </p>
-                        )}
                     </div>
-                </div>
+                </>
             )}
 
-            {/* ================== STEP 2: CHỌN NGÀY + GIỜ ================== */}
+            {/* ================= STEP 2 ================= */}
             {step === 2 && (
                 <div>
                     <button
-                        className="text-sm text-blue-600 mb-3"
+                        className="mb-4 text-blue-500"
                         onClick={() => setStep(1)}
                     >
-                        ← Đổi bác sĩ
+                        ← Chọn bác sĩ khác
                     </button>
 
-                    <h2 className="font-semibold mb-2">
-                        {selectedDoctor.user.fullName}
+                    <h2 className="font-semibold mb-4">
+                        Chọn ngày khám – {selectedDoctor.user.fullName}
                     </h2>
 
                     <input
                         type="date"
                         min={formatDateYMD(new Date())}
                         value={selectedDate}
-                        onChange={(e) =>
-                            handleDateChange(e.target.value)
-                        }
+                        onChange={(e) => handleDateChange(e.target.value)}
                         className="border rounded px-4 py-2"
                     />
 
-                    {selectedDate && (
-                        <h3 className="mt-4 font-medium">
-                            Giờ khám ngày{" "}
-                            {formatDateVN(selectedDate)}
-                        </h3>
-                    )}
+                    {loading && <p className="mt-4">Đang tải giờ khám...</p>}
 
-                    {loading && (
-                        <p className="mt-4">
-                            Đang tải giờ khám...
-                        </p>
-                    )}
-
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
                         {availableSlots
                             .filter((s) => s.isAvailable)
                             .map((slot, i) => (
                                 <button
                                     key={i}
-                                    className={`border rounded p-3 ${
-                                        selectedSlot?.startTime ===
-                                        slot.startTime
-                                            ? "border-blue-500 bg-blue-50"
-                                            : ""
-                                    }`}
+                                    className="border rounded p-3 hover:bg-blue-50"
                                     onClick={() => {
                                         setSelectedSlot(slot);
                                         setStep(3);
@@ -221,7 +214,7 @@ export default function BookingPage() {
                 </div>
             )}
 
-            {/* ================== STEP 3: XÁC NHẬN ================== */}
+            {/* ================= STEP 3 ================= */}
             {step === 3 && (
                 <div>
                     <h2 className="font-semibold mb-4">
@@ -229,16 +222,13 @@ export default function BookingPage() {
                     </h2>
 
                     <p>
-                        <b>Bác sĩ:</b>{" "}
-                        {selectedDoctor.user.fullName}
+                        <b>Bác sĩ:</b> {selectedDoctor.user.fullName}
                     </p>
                     <p>
-                        <b>Ngày:</b>{" "}
-                        {formatDateVN(selectedDate)}
+                        <b>Ngày:</b> {formatDateVN(selectedDate)}
                     </p>
                     <p>
-                        <b>Giờ:</b>{" "}
-                        {selectedSlot.startTime} -{" "}
+                        <b>Giờ:</b> {selectedSlot.startTime} -{" "}
                         {selectedSlot.endTime}
                     </p>
 
@@ -246,9 +236,7 @@ export default function BookingPage() {
                         className="w-full border rounded mt-4 p-3"
                         placeholder="Triệu chứng..."
                         value={symptoms}
-                        onChange={(e) =>
-                            setSymptoms(e.target.value)
-                        }
+                        onChange={(e) => setSymptoms(e.target.value)}
                     />
 
                     <button
@@ -269,7 +257,7 @@ export default function BookingPage() {
                 </div>
             )}
 
-            {/* ================== STEP 4: DONE ================== */}
+            {/* ================= STEP 4 ================= */}
             {step === 4 && (
                 <div className="text-center">
                     <h2 className="text-green-600 text-xl font-bold">
