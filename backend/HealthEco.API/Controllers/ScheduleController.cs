@@ -71,7 +71,7 @@ namespace HealthEco.API.Controllers
             var targetDateOnly = DateOnly.FromDateTime(targetDateUtc);
 
             int dayOfWeek = (int)targetDateUtc.DayOfWeek;
-            if (dayOfWeek == 0) dayOfWeek = 7;
+
 
             var schedules = await _context.DoctorSchedule
                 .Where(s =>
