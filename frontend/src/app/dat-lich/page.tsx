@@ -46,10 +46,12 @@ export default function BookingPage() {
             // Assuming facilityId is 1 for now
             const slots = await scheduleService.getAvailableSlots(
                 selectedDoctor.id,
-                1, // facilityId
+                1,
                 date
             );
-            setAvailableSlots(slots.data || []);
+
+            setAvailableSlots(slots || []);
+
         } catch (error) {
             console.error("Error fetching slots:", error);
         } finally {
@@ -232,8 +234,8 @@ export default function BookingPage() {
                                             key={offset}
                                             onClick={() => handleDateSelect(dateStr)}
                                             className={`flex-1 text-center py-3 rounded-lg border ${isSelected
-                                                    ? "border-primary bg-primary text-white"
-                                                    : "border-gray-300 hover:border-primary hover:bg-blue-50"
+                                                ? "border-primary bg-primary text-white"
+                                                : "border-gray-300 hover:border-primary hover:bg-blue-50"
                                                 }`}
                                         >
                                             <div className="text-sm">
@@ -280,8 +282,8 @@ export default function BookingPage() {
                                                         key={index}
                                                         onClick={() => handleSlotSelect(slot)}
                                                         className={`p-4 border rounded-lg text-center transition ${selectedSlot?.startTime === slot.startTime
-                                                                ? "border-primary bg-blue-50"
-                                                                : "border-gray-300 hover:border-primary hover:bg-blue-50"
+                                                            ? "border-primary bg-blue-50"
+                                                            : "border-gray-300 hover:border-primary hover:bg-blue-50"
                                                             }`}
                                                     >
                                                         <div className="font-medium text-lg">
@@ -456,8 +458,8 @@ export default function BookingPage() {
                         >
                             <div
                                 className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${step >= stepNum
-                                        ? "bg-primary text-white"
-                                        : "bg-gray-200 text-gray-400"
+                                    ? "bg-primary text-white"
+                                    : "bg-gray-200 text-gray-400"
                                     }`}
                             >
                                 {stepNum}
