@@ -130,9 +130,6 @@ export default function Navbar() {
                                     <Link href="/bac-si" className="text-gray-700 hover:text-blue-600 transition-colors">
                                         Bác sĩ
                                     </Link>
-                                    <Link href="/phong-kham" className="text-gray-700 hover:text-blue-600 transition-colors">
-                                        Phòng khám
-                                    </Link>
                                     <Link href="/dat-lich" className="text-gray-700 hover:text-blue-600 transition-colors">
                                         Đặt lịch
                                     </Link>
