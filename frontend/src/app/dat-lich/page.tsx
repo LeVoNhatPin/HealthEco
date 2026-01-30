@@ -35,6 +35,10 @@ export default function BookingPage() {
     const [search, setSearch] = useState("");
     const [specId, setSpecId] = useState("");
 
+    // ===== PHÍ KHÁM =====
+    const [minFee, setMinFee] = useState(0);
+    const [maxFee, setMaxFee] = useState(1000000);
+
     const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
     const [selectedDate, setSelectedDate] = useState("");
     const [availableSlots, setAvailableSlots] = useState<any[]>([]);
@@ -43,7 +47,7 @@ export default function BookingPage() {
 
     const [loading, setLoading] = useState(false);
 
-    // ================= LOAD DATA =================
+    // ================= LOAD =================
     useEffect(() => {
         const load = async () => {
             const doctorRes = await doctorService.getDoctors();
@@ -60,6 +64,10 @@ export default function BookingPage() {
             setDoctors(doctorList);
             setFilteredDoctors(doctorList);
             setSpecializations(specList);
+
+            // Tự động set maxFee theo data
+            const fees = doctorList.map((d: { consultationFee: any; }) => d.consultationFee || 0);
+            setMaxFee(Math.max(...fees, 100000));
         };
 
         load();
@@ -70,21 +78,27 @@ export default function BookingPage() {
         let result = [...doctors];
 
         if (search) {
-            result = result.filter((d) =>
+            result = result.filter(d =>
                 d.user.fullName.toLowerCase().includes(search.toLowerCase())
             );
         }
 
         if (specId) {
             result = result.filter(
-                (d) => String(d.specialization?.id) === specId
+                d => String(d.specialization?.id) === specId
             );
         }
 
-        setFilteredDoctors(result);
-    }, [search, specId, doctors]);
+        result = result.filter(
+            d =>
+                (d.consultationFee || 0) >= minFee &&
+                (d.consultationFee || 0) <= maxFee
+        );
 
-    // ================= DATE CHANGE =================
+        setFilteredDoctors(result);
+    }, [search, specId, minFee, maxFee, doctors]);
+
+    // ================= DATE =================
     const handleDateChange = async (dateStr: string) => {
         if (!selectedDoctor) return;
 
@@ -110,7 +124,6 @@ export default function BookingPage() {
         }
     };
 
-    // ================= UI =================
     return (
         <div className="max-w-5xl mx-auto p-6">
             <h1 className="text-2xl font-bold mb-6">Đặt lịch khám</h1>
@@ -119,26 +132,64 @@ export default function BookingPage() {
             {step === 1 && (
                 <>
                     {/* FILTER */}
-                    <div className="bg-white p-4 rounded shadow mb-6 grid md:grid-cols-3 gap-4">
-                        <input
-                            className="border px-3 py-2 rounded"
-                            placeholder="Tìm tên bác sĩ..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
+                    <div className="bg-white p-4 rounded shadow mb-6 space-y-4">
+                        <div className="grid md:grid-cols-3 gap-4">
+                            <input
+                                className="border px-3 py-2 rounded"
+                                placeholder="Tìm tên bác sĩ..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
 
-                        <select
-                            className="border px-3 py-2 rounded"
-                            value={specId}
-                            onChange={(e) => setSpecId(e.target.value)}
-                        >
-                            <option value="">Tất cả chuyên khoa</option>
-                            {specializations.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                    {s.name}
-                                </option>
-                            ))}
-                        </select>
+                            <select
+                                className="border px-3 py-2 rounded"
+                                value={specId}
+                                onChange={(e) => setSpecId(e.target.value)}
+                            >
+                                <option value="">Tất cả chuyên khoa</option>
+                                {specializations.map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* ===== SLIDER PHÍ KHÁM ===== */}
+                        <div>
+                            <label className="font-medium">
+                                Phí khám:{" "}
+                                <span className="text-blue-600 font-semibold">
+                                    {minFee.toLocaleString()} – {maxFee.toLocaleString()} VND
+                                </span>
+                            </label>
+
+                            <div className="flex gap-4 mt-2">
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={2000000}
+                                    step={50000}
+                                    value={minFee}
+                                    onChange={(e) =>
+                                        setMinFee(Number(e.target.value))
+                                    }
+                                    className="w-full"
+                                />
+
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={2000000}
+                                    step={50000}
+                                    value={maxFee}
+                                    onChange={(e) =>
+                                        setMaxFee(Number(e.target.value))
+                                    }
+                                    className="w-full"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     {/* DOCTOR LIST */}
@@ -161,8 +212,7 @@ export default function BookingPage() {
                                 <p className="text-sm mt-2">
                                     Phí khám:{" "}
                                     <b>
-                                        {d.consultationFee?.toLocaleString()}{" "}
-                                        VND
+                                        {d.consultationFee?.toLocaleString()} VND
                                     </b>
                                 </p>
                             </div>
@@ -217,20 +267,11 @@ export default function BookingPage() {
             {/* ================= STEP 3 ================= */}
             {step === 3 && (
                 <div>
-                    <h2 className="font-semibold mb-4">
-                        Xác nhận lịch khám
-                    </h2>
+                    <h2 className="font-semibold mb-4">Xác nhận lịch khám</h2>
 
-                    <p>
-                        <b>Bác sĩ:</b> {selectedDoctor.user.fullName}
-                    </p>
-                    <p>
-                        <b>Ngày:</b> {formatDateVN(selectedDate)}
-                    </p>
-                    <p>
-                        <b>Giờ:</b> {selectedSlot.startTime} -{" "}
-                        {selectedSlot.endTime}
-                    </p>
+                    <p><b>Bác sĩ:</b> {selectedDoctor.user.fullName}</p>
+                    <p><b>Ngày:</b> {formatDateVN(selectedDate)}</p>
+                    <p><b>Giờ:</b> {selectedSlot.startTime} - {selectedSlot.endTime}</p>
 
                     <textarea
                         className="w-full border rounded mt-4 p-3"
