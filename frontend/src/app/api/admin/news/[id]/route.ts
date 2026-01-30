@@ -35,29 +35,74 @@ export async function GET(
    PUT /api/admin/news/:id
 ========================= */
 export async function PUT(
-    req: NextRequest,
-    context: { params: Promise<{ id: string }> },
+    req: Request,
+    context: { params: { id: string } }
 ) {
     try {
-        const { id } = await context.params;
-        const { title, content, status } = await req.json();
+        const { id } = context.params;
+        const body = await req.json();
+        const { title, content } = body;
 
-        await pool.query(
+        if (!title || !content) {
+            return NextResponse.json(
+                { success: false, message: "Thiếu dữ liệu" },
+                { status: 400 }
+            );
+        }
+
+        const result = await pool.query(
             `
-      UPDATE news
-      SET title = $1,
-          content = $2,
-          status = $3
-      WHERE id = $4
-      `,
-            [title, content, status, id],
+            UPDATE news
+            SET title = $1,
+                content = $2,
+                updated_at = NOW()
+            WHERE id = $3
+            RETURNING *
+            `,
+            [title, content, id]
+        );
+
+        if (result.rowCount === 0) {
+            return NextResponse.json(
+                { success: false, message: "Không tìm thấy bài viết" },
+                { status: 404 }
+            );
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: "Cập nhật bài viết thành công",
+            data: result.rows[0],
+        });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json(
+            { success: false, message: "Lỗi cập nhật bài viết" },
+            { status: 500 }
+        );
+    }
+}
+
+export async function DELETE(
+    req: Request,
+    { params }: { params: { id: string } }
+) {
+    try {
+        await pool.query(
+            `DELETE FROM news WHERE id = $1`,
+            [params.id]
         );
 
         return NextResponse.json({
-            message: "Cập nhật thành công",
+            success: true,
+            message: "Xoá bài viết thành công",
         });
-    } catch (err) {
-        console.error(err);
-        return NextResponse.json({ message: "Lỗi server" }, { status: 500 });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json(
+            { success: false, message: "Lỗi xoá bài viết" },
+            { status: 500 }
+        );
     }
 }
+
