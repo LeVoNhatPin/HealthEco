@@ -1,37 +1,47 @@
-import { NextResponse } from "next/server";
+import { NextResponse,NextRequest } from "next/server";
 import pool from "@/lib/db"; // 👈 IMPORT DEFAULT
 
 interface Params {
     params: { id: string };
 }
 
-/* =========================
-   GET /api/admin/news/:id
-========================= */
-export async function GET(req: Request, { params }: Params) {
-    try {
-        const { id } = params;
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
 
-        const result = await pool.query(
-            `SELECT id, topic, title, content, status
-       FROM news
-       WHERE id = $1`,
-            [id],
-        );
+    const status = searchParams.get("status"); // DRAFT | PUBLISHED | REJECTED
+    const topic = searchParams.get("topic");
 
-        if (result.rowCount === 0) {
-            return NextResponse.json(
-                { message: "Không tìm thấy bài viết" },
-                { status: 404 },
-            );
-        }
+    let query = `
+      SELECT id, topic, title, status, created_at
+      FROM news
+      WHERE 1 = 1
+    `;
+    const values: any[] = [];
 
-        return NextResponse.json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        return NextResponse.json({ message: "Lỗi server" }, { status: 500 });
+    if (status) {
+      values.push(status);
+      query += ` AND status = $${values.length}`;
     }
-}
+
+    if (topic) {
+      values.push(topic);
+      query += ` AND topic ILIKE $${values.length}`;
+    }
+
+    query += " ORDER BY created_at DESC";
+
+    const result = await pool.query(query, values);
+
+    return NextResponse.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { message: "Lỗi server" },
+      { status: 500 }
+    );
+  }
+  }
 
 /* =========================
    PUT /api/admin/news/:id
