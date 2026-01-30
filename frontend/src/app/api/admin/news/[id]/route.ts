@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-export async function GET(
-    req: NextRequest,
-    context: { params: Promise<{ id: string }> },
-) {
-    try {
-        const { id } = await context.params;
+interface Params {
+    params: { id: string };
+}
 
-        const result = await pool.query("SELECT * FROM news WHERE id = $1", [
+/* =========================
+   GET /api/admin/news/:id
+========================= */
+export async function GET(req: NextRequest, { params }: Params) {
+    try {
+        const { id } = params;
+
+        const result = await pool.query(`SELECT * FROM news WHERE id = $1`, [
             id,
         ]);
 
@@ -20,6 +24,34 @@ export async function GET(
         }
 
         return NextResponse.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        return NextResponse.json({ message: "Lỗi server" }, { status: 500 });
+    }
+}
+
+/* =========================
+   PUT /api/admin/news/:id
+========================= */
+export async function PUT(req: NextRequest, { params }: Params) {
+    try {
+        const { id } = params;
+        const { title, content, status } = await req.json();
+
+        await pool.query(
+            `
+      UPDATE news
+      SET title = $1,
+          content = $2,
+          status = $3
+      WHERE id = $4
+      `,
+            [title, content, status, id],
+        );
+
+        return NextResponse.json({
+            message: "Cập nhật thành công",
+        });
     } catch (err) {
         console.error(err);
         return NextResponse.json({ message: "Lỗi server" }, { status: 500 });

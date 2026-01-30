@@ -5,11 +5,14 @@ interface Params {
     params: { id: string };
 }
 
+/* =========================
+   GET /api/admin/news
+========================= */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const status = searchParams.get("status"); // DRAFT | PUBLISHED | REJECTED
+    const status = searchParams.get("status");
     const topic = searchParams.get("topic");
 
     let query = `
@@ -25,7 +28,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (topic) {
-      values.push(topic);
+      values.push(`%${topic}%`);
       query += ` AND topic ILIKE $${values.length}`;
     }
 
@@ -41,7 +44,7 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-  }
+}
 
 /* =========================
    PUT /api/admin/news/:id
