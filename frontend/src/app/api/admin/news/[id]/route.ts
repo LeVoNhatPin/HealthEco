@@ -1,13 +1,15 @@
-import { NextResponse } from "next/server";
-import pool from "@/lib/db"; // 👈 IMPORT DEFAULT
+import { NextRequest, NextResponse } from "next/server";
+import pool from "@/lib/db";
 
 export async function GET(
-    req: Request,
-    { params }: { params: { id: string } },
+    req: NextRequest,
+    context: { params: Promise<{ id: string }> },
 ) {
     try {
-        const result = await pool.query(`SELECT * FROM news WHERE id = $1`, [
-            params.id,
+        const { id } = await context.params;
+
+        const result = await pool.query("SELECT * FROM news WHERE id = $1", [
+            id,
         ]);
 
         if (result.rowCount === 0) {
